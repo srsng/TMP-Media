@@ -2,27 +2,62 @@
 
 ## 当前状态
 
-- 已清理上一轮错误生成的工程文件和目录。
-- 当前仓库只保留：
-  - `.git/`
-  - `.gitattributes`
-  - `DESIGN.md`
-  - `PLAN.md`
-  - `RUST_PLUGIN_A方案.md`
-- 当前还没有有效的 Visual Studio 解决方案、工程文件或插件源码。
+- 初始化基线已完成：官方 `PluginTemplate` 已机械重命名为 `TrafficMonitorMedia`，官方 `PluginInterface.h` 已放入 `include/`。
+- `TrafficMonitorMedia.sln` 由 `dotnet sln` 创建，工程可在 Visual Studio 中打开；工程本体来自官方模板，不是手写项目文件。
+- 当前处于 Phase 3（P1 当前媒体标题）开始前；尚未接入媒体逻辑。
 
 ## 硬性规则
 
 1. 不再手写 `.sln` / `.vcxproj` / `PluginInterface.h`。
-2. 远程资料只通过 MCP 获取：
-   - TrafficMonitor 插件开发 Wiki
-   - TrafficMonitorPlugins 官方模板
-   - `include/PluginInterface.h`
-   - `TMP-WeatherPro` 参考结构
-3. PowerShell 只用于本地文件检查、清理、复制、构建，不用于联网抓资料。
+2. 文档页面可通过 MCP 获取；允许在 `D:\projects\cplusplus` 下将官方或参考 Git 仓库克隆为 `TMP-media` 的同级目录。
+3. 不通过 PowerShell、curl、wget 抓取单个远程文件；源码优先从同级 Git 克隆仓库复制。PowerShell 只用于本地文件处理、构建与检查。
 4. 清理无用文件时只删除明确列出的生成物，不碰 `.git*`、文档、repo 配置。
 5. 工具链、模板、构建步骤有问题时先停下说明，不继续乱造文件。
 6. 每个阶段完成后先汇报目录状态和验证结果，再进入下一阶段。
+
+
+## 实施状态（2026-07-24）
+
+### 已确认环境（直接复用，不再重复检查）
+
+- Visual Studio Community：`D:\dev_tools\Microsoft Visual Studio\18\Community`
+- MSBuild：`D:\dev_tools\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe`
+- 当前构建验证改用已安装的 v145 工具集；这是用户明确批准的兼容性调整。
+- 后续 GSMTC / C++/WinRT 使用 C++17 或更高，并链接 `windowsapp.lib`。
+
+### 测试职责边界
+
+- 自动执行：工程编译、DLL 产物检查、`TMPluginGetInstance` 导出检查、可拆分纯逻辑测试。
+- 人工执行：TrafficMonitor 插件加载、任务栏显示、点击/双击、媒体切换、歌词和实际任务栏布局测试。
+- 自动化阶段不会启动或修改用户的 TrafficMonitor 安装。
+
+### 当前执行记录
+
+- [x] 清理错误工程，仅保留文档与仓库配置。
+- [x] 明确目标目录结构、测试职责和已确认工具链。
+- [x] 已在工作区同级克隆 `TrafficMonitorPlugins` 官方仓库（提交 `eb7fc9e56f93fb69c99b185c6b8c395153d78bc6`）。
+- [x] 已复制官方 `PluginTemplate` 与 `PluginInterface.h`，并机械重命名为 `TrafficMonitorMedia`。
+- [x] 已由 dotnet 工具创建 `TrafficMonitorMedia.sln`，并在设置 `VCTargetsPath` 后加入 C++ 工程。
+- [x] 已使用 v145 成功构建 `Release|x64`，并确认 DLL 与 `TMPluginGetInstance` 导出。
+- [x] 已添加 `.gitignore` 与本地 `justfile`，固化构建、导出验证和受限清理命令；`justfile` 含本机 VS 路径并已被 Git 忽略。
+- [ ] 开始 Phase 3：P1 当前媒体标题。
+
+### 构建验证记录（2026-07-24）
+
+- 工程使用当前安装的 v145 工具集；仅将官方模板迁移工程中的 6 个 `<PlatformToolset>` 值由 `v143` 改为 `v145`，未修改模板功能代码。
+- 初次 v145 构建的 MSB6001 并非工程或 MFC 问题：当前 Codex 进程环境同时注入了大小写不同的 PATH 与 Path，MSBuild 启动 CL.exe 时在 Windows 不区分大小写的环境变量表中冲突。
+- 本地忽略的 `justfile` 以多行 PowerShell 脚本直接调用 `MSBuild.exe`；在脚本进程内归一化 `PATH`/`Path`，构建日志能正常显示中文。
+- `just build` 已成功，退出码为 `0`；`just verify` 已确认 DLL 导出 `TMPluginGetInstance`。
+- `just rebuild` 已在仅清理 `TrafficMonitorMedia/bin`、`TrafficMonitorMedia/TrafficM.1C2173CA` 与 `.vs` 后成功，日志显示 `All 434 functions were compiled`。因此此前 `0 of 434 functions were compiled` 为增量链接复用缓存的正常提示，不代表 DLL 未编译。
+- 产物：`TrafficMonitorMedia\\bin\\x64\\Release\\TrafficMonitorMedia.dll`。
+- 编译有 C4819 编码警告（模板的 UTF-8 中文注释被当前代码页 936 编译）；不影响本次 DLL 构建与导出验证。尚未改动编码设置，后续清理警告前先单独确认。
+
+### 当前执行顺序
+
+1. 在 `D:\projects\cplusplus` 下克隆 `TrafficMonitorPlugins` 官方仓库，并从同级仓库取得 `PluginTemplate` 和 `PluginInterface.h` 原文件。
+2. 将官方模板完整落盘，再机械重命名为 `TrafficMonitorMedia`；不凭空编写工程文件。
+3. 先编译原模板语义的最小插件并检查 DLL 导出。
+4. 再按 P1 → P2 → P3 → P4 逐阶段实现；每阶段先完成本地验证，再交给人工测试。
 
 ## 目标
 
@@ -237,4 +272,6 @@ TMP-media/
 
 ## 下一步
 
-下一步只做 Phase 0：用 MCP 补齐官方文档、模板和参考仓库信息，然后汇报，不创建工程文件。
+1. 提交当前初始化基线（文档、官方模板副本、接口头、解决方案和忽略规则）。
+2. 按 Phase 3 接入 GSMTC 媒体快照：后台刷新，`DataRequired()` 只读取缓存。
+3. 每个阶段先运行 `just build` / `just verify`；TrafficMonitor 的加载和交互由人工测试。

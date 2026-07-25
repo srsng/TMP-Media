@@ -13,13 +13,13 @@
 
 参考链接：
 
-- https://github.com/zhongyang219/TrafficMonitor/wiki/%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97
-- https://raw.githubusercontent.com/zhongyang219/TrafficMonitor/master/include/PluginInterface.h
-- https://github.com/zhongyang219/TrafficMonitorPlugins/wiki/%E6%8F%92%E4%BB%B6%E6%B5%8B%E8%AF%95%E5%99%A8
-- https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager
-- https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssession
-- https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessiontimelineproperties
-- https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmediaproperties
+- <https://github.com/zhongyang219/TrafficMonitor/wiki/%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97>
+- <https://raw.githubusercontent.com/zhongyang219/TrafficMonitor/master/include/PluginInterface.h>
+- <https://github.com/zhongyang219/TrafficMonitorPlugins/wiki/%E6%8F%92%E4%BB%B6%E6%B5%8B%E8%AF%95%E5%99%A8>
+- <https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmanager>
+- <https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssession>
+- <https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessiontimelineproperties>
+- <https://learn.microsoft.com/en-us/uwp/api/windows.media.control.globalsystemmediatransportcontrolssessionmediaproperties>
 
 ## 2. 范围与默认决策
 

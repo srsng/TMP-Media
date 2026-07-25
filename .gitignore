@@ -1,0 +1,41 @@
+# Visual Studio workspace and user-specific files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+*.ipch
+
+# MSBuild and C++ intermediate files
+[Dd]ebug/
+[Rr]elease/
+[xX]64/
+[xX]86/
+[Aa][Rr][Mm]64/
+[Aa][Rr][Mm]64[Ee][Cc]/
+bin/
+obj/
+*.obj
+*.iobj
+*.ipdb
+*.idb
+*.pdb
+*.ilk
+*.tlog
+*.lastbuildstate
+*.log
+
+# Linker outputs
+*.dll
+*.exe
+*.lib
+*.exp
+
+# Per-project Visual C++ intermediate directory
+TrafficMonitorMedia/TrafficM.*/
+
+# Local developer command configuration
+justfile
+
