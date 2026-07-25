@@ -84,5 +84,23 @@
     <Image Include="res\icon.ico">
       <Filter>资源文件</Filter>
     </Image>
+    <Image Include="res\status-no-media-on-dark.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="res\status-no-media-on-light.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="res\status-pause-on-dark.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="res\status-pause-on-light.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="res\status-play-on-dark.ico">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="res\status-play-on-light.ico">
+      <Filter>资源文件</Filter>
+    </Image>
   </ItemGroup>
 </Project>

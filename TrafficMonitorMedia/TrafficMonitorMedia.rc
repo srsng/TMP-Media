@@ -147,7 +147,13 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_ICON1               ICON                    "res\\icon.ico"
+IDI_ICON1                       ICON                    "res\icon.ico"
+IDI_STATUS_PLAY_ON_DARK         ICON                    "res\status-play-on-dark.ico"
+IDI_STATUS_PLAY_ON_LIGHT        ICON                    "res\status-play-on-light.ico"
+IDI_STATUS_PAUSE_ON_DARK        ICON                    "res\status-pause-on-dark.ico"
+IDI_STATUS_PAUSE_ON_LIGHT       ICON                    "res\status-pause-on-light.ico"
+IDI_STATUS_NO_MEDIA_ON_DARK     ICON                    "res\status-no-media-on-dark.ico"
+IDI_STATUS_NO_MEDIA_ON_LIGHT    ICON                    "res\status-no-media-on-light.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -244,4 +250,3 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
-

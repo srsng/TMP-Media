@@ -285,6 +285,12 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\icon.ico" />
+    <Image Include="res\status-no-media-on-dark.ico" />
+    <Image Include="res\status-no-media-on-light.ico" />
+    <Image Include="res\status-pause-on-dark.ico" />
+    <Image Include="res\status-pause-on-light.ico" />
+    <Image Include="res\status-play-on-dark.ico" />
+    <Image Include="res\status-play-on-light.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

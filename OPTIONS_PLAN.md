@@ -45,9 +45,7 @@
 |---|---|
 | 正在播放 | `mdi:play` |
 | 已暂停或停止 | `mdi:pause` |
-| 正在读取/状态未知 | `mdi:music-note` |
-| 没有媒体会话 | `mdi:music-off` |
-| 媒体读取失败 | `mdi:alert-circle-outline` |
+| 没有媒体、正在读取或读取失败 | `mdi:music-off` |
 
 资源策略：
 
@@ -150,7 +148,7 @@ wheel_down=none
   - 放置不依赖 MFC/WinRT 的设置模型编译期断言。
 
 - `assets/mdi/*.svg`
-  - 保存 `play`、`pause`、`music-note`、`music-off`、`alert-circle-outline` 的 Iconify MDI 原始 SVG。
+  - 保存用户提供的 `play`、`pause`、`music-off` 三个 Iconify MDI 原始 SVG。
 
 - `tools/Convert-MdiIcons.ps1`
   - 使用 Windows WPF 将 MDI path 离线渲染为深浅两套多尺寸透明 ICO。
@@ -274,9 +272,7 @@ feat: add media plugin settings model
 
 - 新建：`assets/mdi/play.svg`
 - 新建：`assets/mdi/pause.svg`
-- 新建：`assets/mdi/music-note.svg`
 - 新建：`assets/mdi/music-off.svg`
-- 新建：`assets/mdi/alert-circle-outline.svg`
 - 新建：`tools/Convert-MdiIcons.ps1`
 - 新建：`TrafficMonitorMedia/res/status-*.ico`
 - 修改：`TrafficMonitorMedia/resource.h`
@@ -284,7 +280,7 @@ feat: add media plugin settings model
 - 修改：`TrafficMonitorMedia/TrafficMonitorMedia.vcxproj`
 - 修改：`TrafficMonitorMedia/TrafficMonitorMedia.vcxproj.filters`
 
-- [ ] 保存五个 Iconify MDI 原始 SVG，保持 `viewBox="0 0 24 24"` 和原始 path 数据。
+- [ ] 从用户提供的 `D:\projects\rust\qt-demo\.ignored\tmp-icons` 复制 `mdi--play.svg`、`mdi--pause.svg`、`mdi--music-off.svg`；不复制 `skip-next` 和 `skip-previous`。
 - [ ] 转换脚本只读取受控 SVG path，使用 WPF 在 `16/20/24/32/48` 像素画布居中渲染。
 - [ ] 分别用 `RGB(245,245,245)` 和 `RGB(32,32,32)` 生成深色/浅色任务栏资源。
 - [ ] 每个 ICO 包含五个 PNG 帧并保留透明背景。
@@ -298,7 +294,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\Convert-MdiIcons.ps1
 just build Debug x64
 ```
 
-预期：十个 ICO 可重复生成，Debug x64 资源编译成功。
+预期：六个 ICO（3 种状态 × 深浅两套）可重复生成，Debug x64 资源编译成功。
 
 提交检查点：
 
@@ -417,7 +413,7 @@ fix: rebuild localized plugin options dialog
 - 修改：`TrafficMonitorMedia/TrafficMonitorMedia.h`
 - 修改：`TrafficMonitorMedia/TrafficMonitorMedia.cpp`
 
-- [ ] GSMTC 刷新时读取 `PlaybackInfo().PlaybackStatus()`，映射为 Playing、Paused/Stopped、Unknown。
+- [ ] GSMTC 刷新时读取 `PlaybackInfo().PlaybackStatus()`：Playing 使用播放图标，Paused/Stopped/Closed 使用暂停图标；没有会话、读取中、未知和错误统一使用无媒体图标。
 - [ ] `GetItemWidthEx()` 使用设置中的 `max_title_width`，按 DPI 缩放后参与 `std::clamp()`，并额外计入图标宽度和图标间距。
 - [ ] 固定最小宽度继续为 100 个 96 DPI 逻辑像素。
 - [ ] `DrawItem()` 根据媒体标题状态和播放状态选择深色/浅色 ICO，在标题左侧按 DPI 垂直居中绘制。
@@ -547,7 +543,7 @@ git log -6 --oneline
 本阶段只有同时满足以下条件才算完成：
 
 - 中文选项窗口完全无乱码，英文资源也能正常显示。
-- 任务栏标题左侧使用 MDI 图标准确区分播放、暂停、无媒体、读取中/未知和错误状态；图标在深浅任务栏均清晰。
+- 任务栏标题左侧使用用户提供的三个 MDI 图标区分播放、暂停和无可用媒体；读取中、未知和错误归入无可用媒体图标，深浅任务栏均清晰。
 - hover 提示仍为纯文本，不出现状态图标或额外前缀。
 - 显示进度条和标题最大宽度可以配置、立即生效并持久化。
 - 五种鼠标触发器均可独立选择“无操作 / 播放或暂停 / 下一首”。

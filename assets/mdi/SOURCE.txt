@@ -1,0 +1,16 @@
+Material Design Icons subset
+
+Source files supplied by the project owner from the Iconify MDI collection:
+https://icon-sets.iconify.design/mdi/
+
+Author: Pictogrammers
+Upstream: https://github.com/Templarian/MaterialDesign
+License: Apache License 2.0
+Grid: 24 x 24
+
+Included icons:
+- mdi:play
+- mdi:pause
+- mdi:music-off
+
+Generated ICO files under TrafficMonitorMedia/res are derived assets used by the plugin.
