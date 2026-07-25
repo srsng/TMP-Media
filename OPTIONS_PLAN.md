@@ -29,12 +29,15 @@
 |---|---|---:|---|
 | 显示播放进度条 | 布尔值 | 开启 | 关闭后不绘制进度背景、进度前景和顶部间距，标题使用完整高度 |
 | 标题最大宽度 | 整数 | 400 | 96 DPI 逻辑像素，读取时限制到 `100..1000`，绘制时按当前 DPI 缩放 |
+| 第二行显示艺术家 | 布尔值 | 开启 | 开启时标题和艺术家各占一行；没有艺术家时自动回退为标题两行；关闭时标题自身最多换行两行 |
 
 固定保留：
 
+- 标题显示项固定通过 API 8 `IsDoubleLineExclusive()` 独占双行，不提供单双行开关，也不允许其他显示项与其共列。
 - 最小宽度为 100 个 96 DPI 逻辑像素；暂不暴露为选项。
 - 标题文本始终显示；不增加“隐藏标题”这种会使插件失去主要用途的设置。
-- 不增加尚不存在的颜色、字体、标题格式和歌词设置。
+- P4 歌词使用另一个独立显示项，不复用标题项第二行。
+- 不增加尚不存在的颜色和字体设置。
 ### 3. 任务栏媒体状态图标
 
 状态图标只显示在任务栏插件区域的标题左侧；hover 提示继续保持“标题 + 可选艺术家/错误详情”的纯文本格式，不增加图标或“当前媒体：”前缀。
@@ -117,6 +120,7 @@ TrafficMonitor 当前 `MouseEventType` 暴露的五种触发器全部进入配�
 [display]
 show_progress=1
 max_title_width=400
+show_artist_on_second_line=1
 
 [input]
 left_click=toggle_play_pause
@@ -129,10 +133,11 @@ wheel_down=none
 持久化规则：
 
 - 动作用稳定字符串保存，不直接保存枚举整数。
-- 可识别值为 `none`、`toggle_play_pause`、`skip_next`。
+- 可识别值为 `none`、`toggle_play_pause`、`skip_previous`、`skip_next`。
 - 配置文件不存在时使用默认值。
 - 单个键缺失或值非法时，只对该键使用默认值，不影响其他合法设置。
 - 最大宽度读取后统一限制到 `100..1000`。
+- `show_artist_on_second_line` 缺失时默认开启；布尔值非法时按默认值处理。
 - 用户取消选项窗口时不修改内存设置，也不写配置文件。
 
 ---
@@ -167,7 +172,7 @@ wheel_down=none
 - `TrafficMonitorMedia/TrafficMonitorMedia.h`
   - 使用新的 `SettingData`，并将设置成员改为私有。
   - 增加设置互斥锁和按值返回的 `GetSettingsSnapshot()`。
-  - 提供统一动作分发接口，将固定的 `RequestTogglePlayPause()` / `RequestSkipNext()` 门面改为通用输入请求门面。
+  - 提供统一动作分发接口，将固定的 `RequestTogglePlayPause()` / `RequestSkipPrevious()` / `RequestSkipNext()` 门面改为通用输入请求门面。
 
 - `TrafficMonitorMedia/TrafficMonitorMedia.cpp`
   - 实现 INI 读取与保存。
@@ -176,7 +181,7 @@ wheel_down=none
   - 提供显示设置和触发器映射给 `TrafficMonitorMediaItem`。
 
 - `TrafficMonitorMedia/OptionsDlg.h`
-  - 增加进度条复选框、最大宽度编辑框/微调框、五个动作下拉框成员。
+  - 增加进度条复选框、“第二行显示艺术家”复选框、最大宽度编辑框/微调框、五个动作下拉框成员。
   - 增加动作选项填充和选中值读写辅助方法。
 
 - `TrafficMonitorMedia/OptionsDlg.cpp`
@@ -184,10 +189,15 @@ wheel_down=none
   - 用下拉框 ItemData 保存 `MediaControlAction`，不依赖显示文本反向解析。
   - 在 `OnOK()` 中验证宽度并写回 `m_data`。
 
+- `TrafficMonitorMedia/TrafficMonitorMediaItem.h`
+  - 同步官方 API 8 接口后重写 `IsDoubleLineExclusive()` 并固定返回 `1`。
+
 - `TrafficMonitorMedia/TrafficMonitorMediaItem.cpp`
   - 在标题左侧按媒体状态和深浅模式绘制图标。
   - 用设置中的最大宽度替换固定 400。
   - 根据设置决定是否绘制进度条。
+  - 按“第二行显示艺术家”及艺术家是否为空选择“标题/艺术家各一行”或“标题最多两行”。
+  - 状态图标在双行内容区内垂直居中，进度条保持贴底。
   - 将五种鼠标事件分别查询映射并提交对应动作。
   - 实现右键菜单保留规则以及单击/双击消费规则。
 
@@ -219,9 +229,13 @@ wheel_down=none
 - `PLAN.md`
   - 把本阶段登记为 Phase 5.5，并在人工验收后更新完成状态。
 
+### 接口头文件边界
+
+- 原 Phase 5.5 不修改 `include/PluginInterface.h`。
+- 始终双行追加阶段依赖 API 8；当前仓库副本为 API 7，实施前必须由用户确认后，从本地官方 TrafficMonitor 仓库完整同步该文件，禁止手写或局部拼接 ABI 接口。
+
 ### 明确不修改
 
-- `include/PluginInterface.h`
 - `.git*`
 - `justfile`
 - P3/P4 的实现代码
@@ -242,9 +256,9 @@ wheel_down=none
 - 修改：`TrafficMonitorMedia/TrafficMonitorMedia.vcxproj`
 - 修改：`TrafficMonitorMedia/TrafficMonitorMedia.vcxproj.filters`
 
-- [ ] 定义稳定的动作枚举：`None`、`TogglePlayPause`、`SkipNext`。
+- [ ] 定义稳定的动作枚举：`None`、`TogglePlayPause`、`SkipPrevious`、`SkipNext`。
 - [ ] 定义 `InputBindings`，包含 `left_click`、`left_double_click`、`right_click`、`wheel_up`、`wheel_down`。
-- [ ] 定义 `SettingData`，包含 `show_progress`、`max_title_width` 和 `InputBindings`。
+- [ ] 定义 `SettingData`，包含 `show_progress`、`show_artist_on_second_line`、`max_title_width` 和 `InputBindings`。
 - [ ] 提供默认设置，确保默认行为与当前 P2 完全一致。
 - [ ] 提供 `NormalizeSettings()`，限制宽度并修复非法动作值。
 - [ ] 提供 `operator==` / `operator!=`，用于准确判断选项是否变化。
@@ -547,6 +561,8 @@ git log -6 --oneline
 - 中文选项窗口完全无乱码，英文资源也能正常显示。
 - 任务栏标题左侧使用用户提供的三个 MDI 图标表达可执行按钮动作：播放中显示暂停按钮、暂停/停止时显示播放按钮，无可用媒体显示禁用媒体图标；读取中、未知和错误归入无可用媒体图标，深浅任务栏均清晰。
 - hover 提示仍为纯文本，不出现状态图标或额外前缀。
+- 标题显示项始终独占一列双行，不与其他 TrafficMonitor 显示项共列。
+- “第二行显示艺术家”默认开启并可配置、立即生效和持久化；无艺术家时自动回退为标题两行，关闭后标题自身最多换行两行。
 - 显示进度条和标题最大宽度可以配置、立即生效并持久化。
 - 五种鼠标触发器均可独立选择“无操作 / 播放或暂停 / 上一首 / 下一首”。
 - 映射允许重复，没有互斥或固定动作限制。

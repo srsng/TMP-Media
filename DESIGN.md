@@ -7,7 +7,8 @@
 主要依据：
 
 - TrafficMonitor 插件开发指南：插件应创建为 C++ 动态库，包含 `PluginInterface.h`，导出 `TMPluginGetInstance()`，实现 `ITMPlugin` 和 `IPluginItem`，编译后复制到 TrafficMonitor `plugins` 目录加载。
-- TrafficMonitor `PluginInterface.h`：当前 API 版本为 8，支持 `IPluginItem::DrawItemEx(IPluginDrawer*)`、`GetItemWidthEx(void*)`、`OnMouseEvent(...)`、`ITMPlugin::OnInitialize(ITrafficMonitor*)`、`ITrafficMonitor::GetPluginConfigDir()`、`ShowNotifyMessage()`、`GetTaskbarWindowHwnd()` 等接口。
+- TrafficMonitor 官方 `PluginInterface.h`：API 版本 8 支持 `IPluginItem::DrawItemEx(IPluginDrawer*)`、`IsDoubleLineExclusive()`、`GetItemWidthEx(void*)`、`OnMouseEvent(...)` 等接口；`ITMPlugin::GetItem(index)` 明确允许同一个插件 DLL 连续返回多个 `IPluginItem` 显示项。
+- 当前仓库内复制的 `include/PluginInterface.h` 仍是 API 版本 7，缺少 `DrawItemEx()` 和 `IsDoubleLineExclusive()`；实现独占双行前必须从官方 TrafficMonitor 仓库完整同步 API 8 头文件，不能手写或只拼接单个虚函数。
 - TrafficMonitor 插件测试器文档：PluginTester 可加载当前目录或自定义目录中的插件 DLL，预览绘制效果，并触发 `ShowOptionsDialog`、`OnMouseEvent` 等接口，适合插件调试。
 - Microsoft GSMTC 文档：`GlobalSystemMediaTransportControlsSessionManager` 可获取系统媒体会话，`GetCurrentSession()`/`GetSessions()` 获取会话，`TryGetMediaPropertiesAsync()` 获取标题等媒体属性，`GetTimelineProperties()` 获取播放时间线，`TryTogglePlayPauseAsync()`/`TrySkipPreviousAsync()`/`TrySkipNextAsync()` 控制播放。
 
@@ -25,11 +26,12 @@
 
 ### 2.1 功能范围
 
-- P1：在 TrafficMonitor 任务栏窗口显示当前播放媒体的标题。
-- P2：标题底部显示当前播放进度。
+- P1：在 TrafficMonitor 任务栏窗口显示当前播放媒体的标题；标题显示项始终独占任务栏双行，不与其他显示项共列。
+- P1：默认第二行显示艺术家；选项中可取消，取消后标题自身最多换行两行。
+- P2：标题显示项底部显示当前播放进度。
 - P2：单击标题暂停/播放，双击标题下一首。
 - P3：多个媒体会话同时存在时提供切换按钮。
-- P4：支持歌词显示，首版使用“系统/播放器优先”策略。
+- P4：支持歌词显示，首版使用“系统/播放器优先”策略；歌词作为第二个可独立启用和排序的显示项，也独占一列双行。
 - 延后需求（当前技术不支持）：根据 Windows 任务栏对齐方式自由控制插件整体渲染位置——任务栏图标居中时靠任务栏左侧，任务栏图标靠左时整体居中。
 
 ### 2.2 非目标
@@ -42,37 +44,54 @@
 
 ## 3. 用户体验设计
 
-### 3.1 默认展示
+### 3.1 显示项划分
 
-插件只提供一个显示项：`当前媒体`。
+插件按阶段提供两个相互独立的 TrafficMonitor 显示项：
 
-默认单行任务栏高度下展示：
+| 索引 | 显示名称 | 稳定 Item ID | 布局 |
+|---:|---|---|---|
+| `0` | 当前媒体 | `TrafficMonitorMediaTitle` | 始终独占双行，P1/P2/P3 使用 |
+| `1` | 当前歌词 | `TrafficMonitorMediaLyrics` | 始终独占双行，P4 提供 |
 
-```text
-[ 标题 - 艺术家                         ][切换]
-──────────────────────────────────────────────
-```
+`ITMPlugin::GetItem(index)` 依次返回标题项和歌词项，索引 `2` 起返回 `nullptr`。TrafficMonitor 使用各自唯一的 `GetItemId()` 保存启用状态和排序，因此用户可以在主程序的显示项目设置中分别启用、禁用和移动标题列与歌词列；插件选项不重复提供显示项启用开关。
 
-- 标题优先使用媒体属性 `Title`。
-- 艺术家存在时格式为 `标题 - 艺术家`，可配置为只显示标题。
-- 文本超出宽度时由绘制区域裁剪，Tooltip 提供完整标题、艺术家、来源应用、播放状态和进度。
-- 无媒体时显示 `未播放`，也可配置为空白。
+### 3.2 标题项：始终独占双行
 
-### 3.2 双行或较高显示区域
+标题项通过 API 8 的 `IPluginItem::IsDoubleLineExclusive()` 返回 `1`，让 TrafficMonitor 分配完整双行高度，并避免其他内置项或插件项占用同一列。
 
-当 TrafficMonitor 任务栏窗口高度足够，或用户开启歌词显示时：
+默认开启选项“第二行显示艺术家”：
 
 ```text
-[ 标题 - 艺术家                         ][切换]
-[ 当前歌词或系统字幕文本                  ]
-──────────────────────────────────────────────
+[状态] 标题
+       艺术家
+──────────────── 进度
 ```
 
-- 歌词行颜色透明度低于标题行。
-- 没有歌词时不显示空行，标题垂直居中。
-- 进度条始终贴近显示项底部。
+- 第一行显示标题，第二行显示艺术家，两行分别单行省略。
+- 当前媒体没有艺术家时，自动回退为标题最多换行两行，不保留空白第二行。
+- 取消“第二行显示艺术家”后，标题直接占据完整文本列，自动换行且最多显示两行，超出区域后省略。
+- 不提供“单双行显示”开关；标题项无论上述选项如何设置，都始终独占双行。
+- 状态图标位于文本列左侧，并相对扣除进度条后的完整内容区域垂直居中。
+- 进度条始终贴近标题项底部，不改变第二行文本的语义。
+- 无媒体、读取中或读取失败时仍占据完整双行列，状态文本在可用文本区域内垂直居中。
+- Tooltip 继续提供完整标题、艺术家、来源应用、播放状态和进度。
 
-### 3.3 交互
+### 3.3 歌词项：独立一列
+
+P4 不再把歌词塞入标题项第二行，而是新增独立的 `当前歌词` 显示项：
+
+```text
+当前歌词可在完整双行内换行
+────────────────────────
+```
+
+- 歌词项也通过 `IsDoubleLineExclusive()` 独占一列双行；标题项和歌词项同时启用时共占两列，而不是共用一列。
+- 歌词文本使用完整列宽和两行高度，不绘制标题状态图标或标题进度条。
+- 当前歌词最多显示两行，超出后省略；无可用歌词时显示稳定的“无歌词”状态，用户也可直接在 TrafficMonitor 中禁用歌词显示项。
+- 两个显示项共享同一个媒体快照、当前会话选择和歌词提供器，不各自启动后台线程。
+- `ITMPlugin::GetTooltipInfo()` 是插件级接口，不是显示项级接口；标题项和歌词项无法提供不同的宿主 Tooltip，后续 Tooltip 需合并媒体与歌词信息或继续只显示媒体信息。
+
+### 3.4 交互
 
 - 单击标题区域：调用当前选中媒体会话的 `TryTogglePlayPauseAsync()`。
 - 双击标题区域：调用当前选中媒体会话的 `TrySkipNextAsync()`。
@@ -80,7 +99,7 @@
 - 鼠标悬停 Tooltip：显示当前会话详情，例如 `Spotify · 1/3 · 正在播放 · 01:23 / 04:15`。
 - 右键：不拦截，返回 0，让 TrafficMonitor 继续显示主程序右键菜单。
 
-### 3.4 单击与双击冲突处理
+### 3.5 单击与双击冲突处理
 
 TrafficMonitor 会分别上报单击和双击事件。为避免双击时先触发暂停再下一首，插件内部使用延迟单击策略：
 
@@ -96,15 +115,17 @@ TrafficMonitor 会分别上报单击和双击事件。为避免双击时先触�
 TrafficMonitorMediaPlugin.dll
 ├─ Plugin 层
 │  ├─ MediaPlugin：实现 ITMPlugin，提供插件信息、初始化、数据刷新、配置入口
-│  └─ MediaItem：实现 IPluginItem，提供自绘、宽度计算、鼠标事件
+│  ├─ MediaTitleItem：实现标题列的 IPluginItem、自绘、宽度计算和鼠标事件
+│  └─ MediaLyricsItem：实现独立歌词列的 IPluginItem、自绘和宽度计算
 ├─ Media 层
 │  ├─ IMediaSessionService：媒体会话抽象接口
 │  ├─ GsmtcMediaSessionService：GSMTC 实现
 │  ├─ MediaSnapshot：UI 可读取的不可变快照
 │  └─ MediaCommandQueue：异步播放控制命令队列
 ├─ Render 层
-│  ├─ MediaItemRenderer：把 MediaSnapshot 绘制到 IPluginDrawer
-│  ├─ MediaLayout：根据矩形与配置计算标题区、歌词区、进度条、按钮区
+│  ├─ MediaTitleItemRenderer：绘制双行标题/艺术家、状态图标、进度条和按钮
+│  ├─ MediaLyricsItemRenderer：在独立双行列中绘制当前歌词
+│  ├─ MediaLayout：根据各显示项矩形与配置计算文本、进度条和按钮区域
 │  └─ ThemeColors：深浅色下的文字、进度、按钮颜色
 ├─ Lyrics 层
 │  ├─ ILyricsProvider：歌词提供器接口
@@ -123,9 +144,9 @@ TrafficMonitor 定时调用 DataRequired()
         ↓
 MediaPlugin 请求 MediaSessionService 刷新快照，或读取后台缓存
         ↓
-MediaItem::DrawItemEx() 获取最新 MediaSnapshot
+MediaTitleItem / MediaLyricsItem 获取同一份最新 MediaSnapshot
         ↓
-MediaLayout 计算区域，MediaItemRenderer 绘制标题/歌词/进度/按钮
+各自布局和渲染器分别绘制标题列或歌词列
         ↓
 OnMouseEvent() 根据命中测试投递播放控制或切换会话命令
 ```
@@ -178,7 +199,7 @@ struct PluginConfig {
     int maxWidth96Dpi{460};
     int switchButtonWidth96Dpi{28};
     int progressHeight96Dpi{3};
-    bool showArtist{true};
+    bool showArtistOnSecondLine{true};
     bool showLyrics{true};
     bool showEmptyText{true};
     std::wstring emptyText{L"未播放"};
@@ -222,7 +243,7 @@ struct PluginConfig {
 
 ## 6. 歌词设计
 
-首版采用“系统/播放器优先”。这不是联网歌词功能，也不保证所有播放器都有歌词。
+首版采用“系统/播放器优先”。这不是联网歌词功能，也不保证所有播放器都有歌词。歌词通过索引 `1` 的独立 `MediaLyricsItem` 暴露，由 TrafficMonitor 主程序单独控制启用和排序；标题项的第二行只用于艺术家或标题换行，不再承载歌词。
 
 ```cpp
 class ILyricsProvider {
@@ -237,7 +258,7 @@ public:
 - 输入：`MediaSessionSnapshot::subtitle` 及未来可合法获取的系统媒体扩展文本。
 - 输出：当前歌词行文本。
 - 默认策略：如果 `subtitle` 非空且配置允许，就显示为歌词/字幕行。
-- 若 `subtitle` 为空，不显示歌词行。
+- 若没有可用歌词，歌词提供器返回空结果，由独立歌词项统一显示“无歌词”。
 
 后续可扩展：
 
@@ -246,31 +267,28 @@ public:
 
 ## 7. 配置设计
 
-配置文件位置：`ITrafficMonitor::GetPluginConfigDir()` 下的 `TrafficMonitorMediaPlugin.ini`。
+配置文件位置：`ITrafficMonitor::GetPluginConfigDir()` 下的 `TrafficMonitorMedia.ini`。
 
-配置项：
+配置项沿用当前实现使用的小写节名和稳定键名；歌词项是否启用由 TrafficMonitor 的显示项目设置保存，不在插件 INI 中重复设置：
 
 ```ini
-[Display]
-MinWidth=240
-MaxWidth=460
-ShowArtist=1
-ShowLyrics=1
-ShowEmptyText=1
-EmptyText=未播放
-ProgressHeight=3
-SwitchButtonWidth=28
+[display]
+show_progress=1
+max_title_width=400
+show_artist_on_second_line=1
 
-[Behavior]
-SingleClickAction=TogglePlayPause
-DoubleClickAction=SkipNext
-RememberSelectedSession=1
+[input]
+left_click=toggle_play_pause
+left_double_click=skip_next
+right_click=none
+wheel_up=none
+wheel_down=none
 
-[Lyrics]
-UseSystemSubtitle=1
+[lyrics]
+use_system_subtitle=1
 ```
 
-首版可以先实现文件配置，不强制实现设置对话框。若实现 `ShowOptionsDialog()`，只提供上述配置的简单 Win32 对话框，不引入 MFC 依赖。
+当前插件已经提供 MFC 选项窗口；“第二行显示艺术家”必须在该窗口暴露并持久化。标题项与歌词项是否出现在任务栏中仍由 TrafficMonitor 的显示项目设置控制。
 
 ## 8. 错误处理与降级
 
@@ -279,14 +297,17 @@ UseSystemSubtitle=1
 - 当前播放器不支持播放/暂停、上一首或下一首：命令返回失败时不崩溃，必要时调用 `ShowNotifyMessage()`。
 - 多会话列表为空：隐藏切换按钮。
 - 进度无有效 duration：隐藏进度条。
-- 歌词不可用：隐藏歌词行。
+- 歌词不可用：独立歌词项显示“无歌词”；用户可在 TrafficMonitor 的显示项目设置中关闭该项。
 
 ## 9. 验收标准
 
 ### P1
 
 - TrafficMonitor 插件管理中能看到插件名称、版本、作者。
-- 任务栏显示项可启用。
+- TrafficMonitor 中可独立启用标题显示项。
+- 标题项始终独占完整双行，不与其他显示项共列。
+- 默认第一行显示标题、第二行显示艺术家；没有艺术家时标题自动占满两行。
+- 关闭“第二行显示艺术家”后，标题最多换行两行并占满文本列。
 - 播放媒体时显示标题；无媒体时显示配置的空状态。
 
 ### P2
@@ -304,12 +325,16 @@ UseSystemSubtitle=1
 
 ### P4
 
-- 开启歌词显示且播放器暴露系统字幕/文本时显示歌词行。
-- 不暴露歌词时不显示无意义占位，不影响 P1–P3。
+- 插件向 TrafficMonitor 暴露独立的“当前歌词”显示项，具有唯一 Item ID，可与标题项分别启用和排序。
+- 歌词项独占另一列双行；标题和歌词同时启用时不会互相挤占第二行。
+- 播放器暴露系统字幕/文本时显示当前歌词，长歌词最多两行并省略。
+- 不暴露歌词时显示“无歌词”，不影响 P1–P3；用户可以在 TrafficMonitor 中关闭歌词项。
 
 ## 10. 已知限制
 
 - 插件接口无法保证控制 TrafficMonitor 任务栏窗口整体在屏幕中的绝对位置。
+- 独占双行依赖 TrafficMonitor 插件 API 8；当前仓库的接口副本仍是 API 7，实施前必须完整同步官方头文件并重新验证 ABI、PluginTester 和 TrafficMonitor 加载。
+- 一个插件可以提供多个显示项，但 Tooltip 由 `ITMPlugin` 统一提供，不能按标题项和歌词项分别返回。
 - GSMTC 要求 Windows 10 1809 或更新版本；更低版本只能显示不可用状态。
 - GSMTC 中 `Subtitle` 不等价于通用同步歌词，歌词效果依赖播放器实现。
 - 某些播放器可能不允许外部控制播放/暂停、上一首或下一首。
