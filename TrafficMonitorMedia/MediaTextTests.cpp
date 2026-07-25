@@ -7,7 +7,7 @@ static_assert(media::SelectDisplayText(media::MediaTitleState::Ready, L"Song", L
 static_assert(media::SelectDisplayText(media::MediaTitleState::Ready, L"", L"Player") == L"Player");
 static_assert(media::SelectDisplayText(media::MediaTitleState::NoSession, L"", L"") == media::kNoMediaText);
 static_assert(media::SelectDisplayText(media::MediaTitleState::Error, L"", L"") == media::kUnavailableMediaText);
-// P2：进度和单/双击分流必须可在不依赖 GSMTC 的情况下回归验证。
+
 static_assert(media::CalculateProgressFraction(0, 0, 100) == 0.0);
 static_assert(media::CalculateProgressFraction(25, 0, 100) == 0.25);
 static_assert(media::CalculateProgressFraction(40, 10, 130) == 0.25);
@@ -15,9 +15,40 @@ static_assert(media::CalculateProgressFraction(-1, 0, 100) == 0.0);
 static_assert(media::CalculateProgressFraction(150, 0, 100) == 1.0);
 static_assert(media::CalculateProgressFraction(10, 10, 10) == 0.0);
 
-static_assert(media::ResolveClickAction(false, false) == media::MediaControlAction::None);
-static_assert(media::ResolveClickAction(false, true) == media::MediaControlAction::TogglePlayPause);
-static_assert(media::ResolveClickAction(true, false) == media::MediaControlAction::SkipNext);
-static_assert(media::ResolveClickAction(true, true) == media::MediaControlAction::SkipNext);
-static_assert(media::ShouldScheduleSingleClick(false));
-static_assert(!media::ShouldScheduleSingleClick(true));
+static_assert(media::SelectMediaStatusIcon(
+    media::MediaTitleState::Loading,
+    media::MediaPlaybackState::Playing) == media::MediaStatusIcon::NoMedia);
+static_assert(media::SelectMediaStatusIcon(
+    media::MediaTitleState::Ready,
+    media::MediaPlaybackState::Playing) == media::MediaStatusIcon::Playing);
+static_assert(media::SelectMediaStatusIcon(
+    media::MediaTitleState::Ready,
+    media::MediaPlaybackState::Paused) == media::MediaStatusIcon::Paused);
+static_assert(media::SelectMediaStatusIcon(
+    media::MediaTitleState::Ready,
+    media::MediaPlaybackState::Unknown) == media::MediaStatusIcon::NoMedia);
+
+using media::MediaControlAction;
+static_assert(media::ResolveClickAction(
+    false,
+    MediaControlAction::SkipNext,
+    false,
+    MediaControlAction::TogglePlayPause) == MediaControlAction::None);
+static_assert(media::ResolveClickAction(
+    false,
+    MediaControlAction::None,
+    true,
+    MediaControlAction::SkipNext) == MediaControlAction::SkipNext);
+static_assert(media::ResolveClickAction(
+    true,
+    MediaControlAction::TogglePlayPause,
+    false,
+    MediaControlAction::None) == MediaControlAction::TogglePlayPause);
+static_assert(media::ResolveClickAction(
+    true,
+    MediaControlAction::None,
+    true,
+    MediaControlAction::SkipNext) == MediaControlAction::None);
+static_assert(media::ShouldScheduleSingleClick(MediaControlAction::SkipNext, false));
+static_assert(!media::ShouldScheduleSingleClick(MediaControlAction::None, false));
+static_assert(!media::ShouldScheduleSingleClick(MediaControlAction::TogglePlayPause, true));

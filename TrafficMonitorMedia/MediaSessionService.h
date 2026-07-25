@@ -14,6 +14,7 @@
 struct MediaTitleSnapshot
 {
     media::MediaTitleState state{ media::MediaTitleState::Loading };
+    media::MediaPlaybackState playback_state{ media::MediaPlaybackState::Unknown };
     std::wstring title;
     std::wstring artist;
     std::wstring source_app_id;
@@ -35,14 +36,13 @@ public:
     void Start();
     void Stop();
     void RequestRefresh();
-    void RequestTogglePlayPause();
-    void RequestSkipNext();
+    void RequestImmediateAction(media::MediaControlAction action);
+    void RequestSingleClick(media::MediaControlAction action);
+    void RequestDoubleClick(media::MediaControlAction action);
 
     [[nodiscard]] MediaTitleSnapshot GetSnapshot() const;
     [[nodiscard]] std::wstring GetDisplayText() const;
     [[nodiscard]] std::wstring GetTooltipText() const;
-    [[nodiscard]] bool HasTimeline() const;
-    [[nodiscard]] double GetProgressFraction() const;
 
 private:
     struct WorkerRequest
@@ -50,6 +50,12 @@ private:
         bool stop{};
         bool refresh{};
         media::MediaControlAction action{ media::MediaControlAction::None };
+    };
+
+    struct PendingSingleClick
+    {
+        media::MediaControlAction action{ media::MediaControlAction::None };
+        std::chrono::steady_clock::time_point deadline;
     };
 
     void WorkerLoop();
@@ -63,7 +69,7 @@ private:
     std::condition_variable m_worker_cv;
     std::thread m_worker;
     std::deque<media::MediaControlAction> m_control_actions;
-    std::optional<std::chrono::steady_clock::time_point> m_pending_single_click_deadline;
+    std::optional<PendingSingleClick> m_pending_single_click;
     std::chrono::steady_clock::time_point m_suppress_single_click_until{};
     bool m_started{};
     bool m_stop_requested{};

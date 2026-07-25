@@ -349,29 +349,24 @@ int CTrafficMonitorMedia::DPI(int pixel)
     return pixel;
 }
 
-std::wstring CTrafficMonitorMedia::GetMediaDisplayText() const
+MediaTitleSnapshot CTrafficMonitorMedia::GetMediaSnapshot() const
 {
-    return m_media_service.GetDisplayText();
+    return m_media_service.GetSnapshot();
 }
 
-bool CTrafficMonitorMedia::HasMediaTimeline() const
+void CTrafficMonitorMedia::RequestImmediateAction(media::MediaControlAction action)
 {
-    return m_media_service.HasTimeline();
+    m_media_service.RequestImmediateAction(action);
 }
 
-double CTrafficMonitorMedia::GetMediaProgressFraction() const
+void CTrafficMonitorMedia::RequestSingleClick(media::MediaControlAction action)
 {
-    return m_media_service.GetProgressFraction();
+    m_media_service.RequestSingleClick(action);
 }
 
-void CTrafficMonitorMedia::RequestTogglePlayPause()
+void CTrafficMonitorMedia::RequestDoubleClick(media::MediaControlAction action)
 {
-    m_media_service.RequestTogglePlayPause();
-}
-
-void CTrafficMonitorMedia::RequestSkipNext()
-{
-    m_media_service.RequestSkipNext();
+    m_media_service.RequestDoubleClick(action);
 }
 
 ITMPlugin* TMPluginGetInstance()

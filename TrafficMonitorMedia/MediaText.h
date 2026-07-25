@@ -15,6 +15,40 @@ namespace media
         Error,
     };
 
+    enum class MediaPlaybackState
+    {
+        Unknown,
+        Playing,
+        Paused,
+    };
+
+    enum class MediaStatusIcon
+    {
+        NoMedia,
+        Playing,
+        Paused,
+    };
+
+    [[nodiscard]] constexpr MediaStatusIcon SelectMediaStatusIcon(
+        MediaTitleState title_state,
+        MediaPlaybackState playback_state) noexcept
+    {
+        if (title_state != MediaTitleState::Ready)
+        {
+            return MediaStatusIcon::NoMedia;
+        }
+
+        switch (playback_state)
+        {
+        case MediaPlaybackState::Playing:
+            return MediaStatusIcon::Playing;
+        case MediaPlaybackState::Paused:
+            return MediaStatusIcon::Paused;
+        case MediaPlaybackState::Unknown:
+        default:
+            return MediaStatusIcon::NoMedia;
+        }
+    }
 
     inline constexpr std::wstring_view kLoadingMediaText{ L"正在获取媒体…" };
     inline constexpr std::wstring_view kNoMediaText{ L"未检测到媒体" };
@@ -63,22 +97,26 @@ namespace media
         return static_cast<double>(position - start) / static_cast<double>(end - start);
     }
 
-    [[nodiscard]] constexpr bool ShouldScheduleSingleClick(bool suppression_active) noexcept
+    [[nodiscard]] constexpr bool ShouldScheduleSingleClick(
+        MediaControlAction action,
+        bool suppression_active) noexcept
     {
-        return !suppression_active;
+        return action != MediaControlAction::None && !suppression_active;
     }
 
-    // 双击优先于已经到期的单击，避免“下一首”额外触发播放/暂停。
+    // 双击动作（包括“无操作”）优先于已经到期的单击动作。
     [[nodiscard]] constexpr MediaControlAction ResolveClickAction(
         bool has_double_click,
-        bool has_matured_single_click) noexcept
+        MediaControlAction double_click_action,
+        bool has_matured_single_click,
+        MediaControlAction single_click_action) noexcept
     {
         if (has_double_click)
         {
-            return MediaControlAction::SkipNext;
+            return double_click_action;
         }
         return has_matured_single_click
-            ? MediaControlAction::TogglePlayPause
+            ? single_click_action
             : MediaControlAction::None;
     }
 }

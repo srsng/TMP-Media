@@ -9,9 +9,26 @@ namespace
 {
     constexpr int kHorizontalPadding96Dpi = 8;
     constexpr int kMinimumWidth96Dpi = 100;
-    constexpr int kMaximumWidth96Dpi = 400;
+    constexpr int kStatusIconSize96Dpi = 16;
+    constexpr int kStatusIconGap96Dpi = 4;
     constexpr int kProgressHeight96Dpi = 2;
     constexpr int kProgressTopGap96Dpi = 2;
+
+    UINT SelectStatusIconResource(
+        media::MediaStatusIcon status,
+        bool dark_mode)
+    {
+        switch (status)
+        {
+        case media::MediaStatusIcon::Playing:
+            return dark_mode ? IDI_STATUS_PLAY_ON_DARK : IDI_STATUS_PLAY_ON_LIGHT;
+        case media::MediaStatusIcon::Paused:
+            return dark_mode ? IDI_STATUS_PAUSE_ON_DARK : IDI_STATUS_PAUSE_ON_LIGHT;
+        case media::MediaStatusIcon::NoMedia:
+        default:
+            return dark_mode ? IDI_STATUS_NO_MEDIA_ON_DARK : IDI_STATUS_NO_MEDIA_ON_LIGHT;
+        }
+    }
 }
 
 const wchar_t* CTrafficMonitorMediaItem::GetItemName() const
@@ -49,15 +66,28 @@ int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
     CDC* pDC = CDC::FromHandle(static_cast<HDC>(hDC));
     if (pDC == nullptr)
     {
-        return g_plugin.DPI(kMinimumWidth96Dpi);
+        return g_plugin.DPI(
+            kMinimumWidth96Dpi + kStatusIconSize96Dpi + kStatusIconGap96Dpi);
     }
 
-    const std::wstring text = g_plugin.GetMediaDisplayText();
+    const media::SettingData settings = g_plugin.GetSettingsSnapshot();
+    const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
+    const std::wstring text(media::SelectDisplayText(
+        snapshot.state,
+        snapshot.title,
+        snapshot.source_app_id));
+
     const int padding = g_plugin.DPI(kHorizontalPadding96Dpi);
-    const int minimum_width = g_plugin.DPI(kMinimumWidth96Dpi);
-    const int maximum_width = g_plugin.DPI(kMaximumWidth96Dpi);
-    const int requested_width = pDC->GetTextExtent(text.c_str()).cx + padding * 2;
-    return std::clamp(requested_width, minimum_width, maximum_width);
+    const int minimum_text_width = g_plugin.DPI(kMinimumWidth96Dpi);
+    const int maximum_text_width = g_plugin.DPI(settings.max_title_width);
+    const int requested_text_width = pDC->GetTextExtent(text.c_str()).cx + padding * 2;
+    const int text_width = std::clamp(
+        requested_text_width,
+        minimum_text_width,
+        maximum_text_width);
+    return text_width
+        + g_plugin.DPI(kStatusIconSize96Dpi)
+        + g_plugin.DPI(kStatusIconGap96Dpi);
 }
 
 void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, bool dark_mode)
@@ -68,18 +98,48 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
         return;
     }
 
-    const bool has_timeline = g_plugin.HasMediaTimeline();
+    const media::SettingData settings = g_plugin.GetSettingsSnapshot();
+    const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
+    const bool show_timeline = settings.show_progress && snapshot.has_timeline;
     const int padding = g_plugin.DPI(kHorizontalPadding96Dpi);
-    const int progress_height = has_timeline
+    const int icon_size = g_plugin.DPI(kStatusIconSize96Dpi);
+    const int icon_gap = g_plugin.DPI(kStatusIconGap96Dpi);
+    const int progress_height = show_timeline
         ? (std::max)(1, g_plugin.DPI(kProgressHeight96Dpi))
         : 0;
-    const int progress_gap = has_timeline
+    const int progress_gap = show_timeline
         ? g_plugin.DPI(kProgressTopGap96Dpi)
         : 0;
-    const int text_height = (std::max)(0, h - progress_height - progress_gap);
+    const int content_height = (std::max)(0, h - progress_height - progress_gap);
 
-    const std::wstring text = g_plugin.GetMediaDisplayText();
-    CRect text_rect(CPoint(x + padding, y), CSize((std::max)(0, w - padding * 2), text_height));
+    const media::MediaStatusIcon status_icon = media::SelectMediaStatusIcon(
+        snapshot.state,
+        snapshot.playback_state);
+    const HICON icon = g_plugin.GetIcon(SelectStatusIconResource(status_icon, dark_mode));
+    const int drawn_icon_size = (std::min)(icon_size, content_height);
+    if (icon != nullptr && drawn_icon_size > 0)
+    {
+        const int icon_x = x + padding + ((icon_size - drawn_icon_size) / 2);
+        const int icon_y = y + ((content_height - drawn_icon_size) / 2);
+        DrawIconEx(
+            pDC->GetSafeHdc(),
+            icon_x,
+            icon_y,
+            icon,
+            drawn_icon_size,
+            drawn_icon_size,
+            0,
+            nullptr,
+            DI_NORMAL);
+    }
+
+    const std::wstring text(media::SelectDisplayText(
+        snapshot.state,
+        snapshot.title,
+        snapshot.source_app_id));
+    const int text_x = x + padding + icon_size + icon_gap;
+    const int text_width = (std::max)(0, w - padding * 2 - icon_size - icon_gap);
+    CRect text_rect(CPoint(text_x, y), CSize(text_width, content_height));
 
     const COLORREF old_text_color = pDC->SetTextColor(dark_mode ? RGB(245, 245, 245) : RGB(32, 32, 32));
     const int old_background_mode = pDC->SetBkMode(TRANSPARENT);
@@ -90,9 +150,9 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
     pDC->SetBkMode(old_background_mode);
     pDC->SetTextColor(old_text_color);
 
-    if (has_timeline && w > 0 && progress_height > 0)
+    if (show_timeline && w > 0 && progress_height > 0)
     {
-        const double progress = std::clamp(g_plugin.GetMediaProgressFraction(), 0.0, 1.0);
+        const double progress = std::clamp(snapshot.progress_fraction, 0.0, 1.0);
         const int progress_width = static_cast<int>(std::lround(static_cast<double>(w) * progress));
         const int progress_y = y + h - progress_height;
         pDC->FillSolidRect(x, progress_y, w, progress_height,
@@ -117,14 +177,34 @@ int CTrafficMonitorMediaItem::OnMouseEvent(
         return 0;
     }
 
+    const media::SettingData settings = g_plugin.GetSettingsSnapshot();
+    media::MediaControlAction action = media::MediaControlAction::None;
+
     switch (type)
     {
     case MT_LCLICKED:
-        g_plugin.RequestTogglePlayPause();
-        return 1;
+        action = settings.input.left_click;
+        g_plugin.RequestSingleClick(action);
+        return action != media::MediaControlAction::None ? 1 : 0;
     case MT_DBCLICKED:
-        g_plugin.RequestSkipNext();
-        return 1;
+        action = settings.input.left_double_click;
+        g_plugin.RequestDoubleClick(action);
+        return action != media::MediaControlAction::None
+            || settings.input.left_click != media::MediaControlAction::None
+            ? 1
+            : 0;
+    case MT_RCLICKED:
+        action = settings.input.right_click;
+        g_plugin.RequestImmediateAction(action);
+        return action != media::MediaControlAction::None ? 1 : 0;
+    case MT_WHEEL_UP:
+        action = settings.input.wheel_up;
+        g_plugin.RequestImmediateAction(action);
+        return action != media::MediaControlAction::None ? 1 : 0;
+    case MT_WHEEL_DOWN:
+        action = settings.input.wheel_down;
+        g_plugin.RequestImmediateAction(action);
+        return action != media::MediaControlAction::None ? 1 : 0;
     default:
         return 0;
     }

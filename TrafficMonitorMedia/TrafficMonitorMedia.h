@@ -9,7 +9,6 @@
 
 #define g_plugin CTrafficMonitorMedia::Instance()
 
-
 class CTrafficMonitorMedia : public ITMPlugin
 {
 private:
@@ -31,11 +30,10 @@ public:
     HICON GetIcon(UINT id);
     int DPI(int pixel);
     [[nodiscard]] media::SettingData GetSettingsSnapshot() const;
-    [[nodiscard]] std::wstring GetMediaDisplayText() const;
-    [[nodiscard]] bool HasMediaTimeline() const;
-    [[nodiscard]] double GetMediaProgressFraction() const;
-    void RequestTogglePlayPause();
-    void RequestSkipNext();
+    [[nodiscard]] MediaTitleSnapshot GetMediaSnapshot() const;
+    void RequestImmediateAction(media::MediaControlAction action);
+    void RequestSingleClick(media::MediaControlAction action);
+    void RequestDoubleClick(media::MediaControlAction action);
 
 private:
     void LoadConfig(const std::wstring& config_dir);
