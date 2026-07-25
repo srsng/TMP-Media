@@ -24,6 +24,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="MediaSettings.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="MediaSessionService.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -50,6 +53,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MediaSettingsTests.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="MediaSessionService.cpp">
       <Filter>源文件</Filter>
     </ClCompile>

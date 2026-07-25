@@ -255,6 +255,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="MediaSessionService.h" />
+    <ClInclude Include="MediaSettings.h" />
     <ClInclude Include="MediaText.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="OptionsDlg.h" />
@@ -265,6 +266,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MediaSessionService.cpp" />
+    <ClCompile Include="MediaSettingsTests.cpp" />
     <ClCompile Include="MediaTextTests.cpp" />
     <ClCompile Include="OptionsDlg.cpp" />
     <ClCompile Include="pch.cpp">

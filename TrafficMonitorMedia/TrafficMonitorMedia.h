@@ -1,15 +1,13 @@
 #pragma once
 #include "..\include\PluginInterface.h"
 #include "MediaSessionService.h"
+#include "MediaSettings.h"
 #include "TrafficMonitorMediaItem.h"
 #include <map>
 #include <string>
 
 #define g_plugin CTrafficMonitorMedia::Instance()
 
-struct SettingData
-{
-};
 
 class CTrafficMonitorMedia : public ITMPlugin
 {
@@ -39,7 +37,7 @@ public:
     void RequestTogglePlayPause();
     void RequestSkipNext();
 
-    SettingData m_setting_data;
+    media::SettingData m_setting_data;
 
 private:
     static CTrafficMonitorMedia m_instance;

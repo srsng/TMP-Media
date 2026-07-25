@@ -1,5 +1,7 @@
 #pragma once
 
+#include "MediaSettings.h"
+
 #include <cstdint>
 #include <string_view>
 
@@ -13,12 +15,6 @@ namespace media
         Error,
     };
 
-    enum class MediaControlAction
-    {
-        None,
-        TogglePlayPause,
-        SkipNext,
-    };
 
     inline constexpr std::wstring_view kLoadingMediaText{ L"正在获取媒体…" };
     inline constexpr std::wstring_view kNoMediaText{ L"未检测到媒体" };

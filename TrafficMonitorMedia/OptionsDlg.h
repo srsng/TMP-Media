@@ -11,7 +11,7 @@ public:
     COptionsDlg(CWnd* pParent = nullptr);   // 标准构造函数
     virtual ~COptionsDlg();
 
-    SettingData m_data;
+    media::SettingData m_data;
 
     // 对话框数据
 #ifdef AFX_DESIGN_TIME
