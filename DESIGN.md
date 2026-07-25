@@ -9,7 +9,7 @@
 - TrafficMonitor 插件开发指南：插件应创建为 C++ 动态库，包含 `PluginInterface.h`，导出 `TMPluginGetInstance()`，实现 `ITMPlugin` 和 `IPluginItem`，编译后复制到 TrafficMonitor `plugins` 目录加载。
 - TrafficMonitor `PluginInterface.h`：当前 API 版本为 8，支持 `IPluginItem::DrawItemEx(IPluginDrawer*)`、`GetItemWidthEx(void*)`、`OnMouseEvent(...)`、`ITMPlugin::OnInitialize(ITrafficMonitor*)`、`ITrafficMonitor::GetPluginConfigDir()`、`ShowNotifyMessage()`、`GetTaskbarWindowHwnd()` 等接口。
 - TrafficMonitor 插件测试器文档：PluginTester 可加载当前目录或自定义目录中的插件 DLL，预览绘制效果，并触发 `ShowOptionsDialog`、`OnMouseEvent` 等接口，适合插件调试。
-- Microsoft GSMTC 文档：`GlobalSystemMediaTransportControlsSessionManager` 可获取系统媒体会话，`GetCurrentSession()`/`GetSessions()` 获取会话，`TryGetMediaPropertiesAsync()` 获取标题等媒体属性，`GetTimelineProperties()` 获取播放时间线，`TryTogglePlayPauseAsync()`/`TrySkipNextAsync()` 控制播放。
+- Microsoft GSMTC 文档：`GlobalSystemMediaTransportControlsSessionManager` 可获取系统媒体会话，`GetCurrentSession()`/`GetSessions()` 获取会话，`TryGetMediaPropertiesAsync()` 获取标题等媒体属性，`GetTimelineProperties()` 获取播放时间线，`TryTogglePlayPauseAsync()`/`TrySkipPreviousAsync()`/`TrySkipNextAsync()` 控制播放。
 
 参考链接：
 
@@ -26,11 +26,11 @@
 ### 2.1 功能范围
 
 - P1：在 TrafficMonitor 任务栏窗口显示当前播放媒体的标题。
-- P1：渲染位置尽量满足“任务栏居中时靠任务栏左侧、任务栏靠左时视觉居中”的意图。
 - P2：标题底部显示当前播放进度。
 - P2：单击标题暂停/播放，双击标题下一首。
 - P3：多个媒体会话同时存在时提供切换按钮。
 - P4：支持歌词显示，首版使用“系统/播放器优先”策略。
+- 延后需求（当前技术不支持）：根据 Windows 任务栏对齐方式自由控制插件整体渲染位置——任务栏图标居中时靠任务栏左侧，任务栏图标靠左时整体居中。
 
 ### 2.2 非目标
 
@@ -39,15 +39,6 @@
 - 首版不接入联网歌词源。
 - 首版不做播放器专有协议适配，例如 Spotify、网易云、QQ 音乐的私有歌词接口。
 
-### 2.3 任务栏位置策略
-
-插件接口能可靠控制的是“插件显示项自身绘制区域”，不能保证控制 TrafficMonitor 任务栏窗口整体在 Windows 任务栏中的绝对位置。
-
-因此首版策略为：
-
-- 当 Windows 11 任务栏图标居中时，建议用户在 TrafficMonitor 中启用任务栏窗口靠左显示相关设置，让插件显示项位于任务栏左侧区域。
-- 当 Windows 任务栏图标靠左时，插件在自身显示项区域内将标题文本居中绘制。
-- 如果未来必须实现真正的“屏幕/任务栏居中”，应作为 TrafficMonitor 主程序增强或单独窗口 Hook 方案评估，不纳入首版插件。
 
 ## 3. 用户体验设计
 
@@ -285,7 +276,7 @@ UseSystemSubtitle=1
 
 - GSMTC 初始化失败：插件仍加载，显示空状态，Tooltip 展示初始化失败原因。
 - 当前播放器不暴露标题：显示来源应用名或空状态。
-- 当前播放器不支持暂停/下一首：命令返回失败时不崩溃，必要时调用 `ShowNotifyMessage()`。
+- 当前播放器不支持播放/暂停、上一首或下一首：命令返回失败时不崩溃，必要时调用 `ShowNotifyMessage()`。
 - 多会话列表为空：隐藏切换按钮。
 - 进度无有效 duration：隐藏进度条。
 - 歌词不可用：隐藏歌词行。
@@ -297,7 +288,6 @@ UseSystemSubtitle=1
 - TrafficMonitor 插件管理中能看到插件名称、版本、作者。
 - 任务栏显示项可启用。
 - 播放媒体时显示标题；无媒体时显示配置的空状态。
-- Windows 11 任务栏居中时，配合 TrafficMonitor 设置可放到任务栏左侧区域；任务栏靠左时，文本在插件显示区域内居中。
 
 ### P2
 
@@ -322,4 +312,19 @@ UseSystemSubtitle=1
 - 插件接口无法保证控制 TrafficMonitor 任务栏窗口整体在屏幕中的绝对位置。
 - GSMTC 要求 Windows 10 1809 或更新版本；更低版本只能显示不可用状态。
 - GSMTC 中 `Subtitle` 不等价于通用同步歌词，歌词效果依赖播放器实现。
-- 某些播放器可能不允许外部控制暂停或下一首。
+- 某些播放器可能不允许外部控制播放/暂停、上一首或下一首。
+
+## 11. 延后需求：任务栏渲染位置（当前技术不支持）
+
+原始需求：
+
+- Windows 任务栏图标居中时，将插件整体放到任务栏左侧区域。
+- Windows 任务栏图标靠左时，将插件整体放到任务栏中央区域。
+
+最新调研结论：当前 TrafficMonitor 插件 API 只向插件提供主程序已经分配的显示项矩形，插件只能在该矩形内部自绘；API 不提供 Windows 任务栏对齐状态，也不允许插件重排 TrafficMonitor 显示项或移动 TrafficMonitor 任务栏窗口。因此当前技术条件下无法可靠实现上述整体居左/居中定位。
+
+处理决定：
+
+- 当前版本不实现该需求，也不使用 Win32 Hook、注入或修改 TrafficMonitor 进程等非官方方案。
+- 现阶段只保证标题、状态按钮和进度条在插件自身区域内正确布局。
+- 等待 TrafficMonitor 未来提供官方布局/定位 API 后再重新评估。

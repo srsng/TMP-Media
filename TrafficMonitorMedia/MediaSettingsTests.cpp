@@ -31,9 +31,12 @@ static_assert(media::ClampTitleWidth(2000) == media::kMaximumTitleWidth);
 
 static_assert(media::ToConfigValue(MediaControlAction::None) == L"none");
 static_assert(media::ToConfigValue(MediaControlAction::TogglePlayPause) == L"toggle_play_pause");
+static_assert(media::ToConfigValue(MediaControlAction::SkipPrevious) == L"skip_previous");
 static_assert(media::ToConfigValue(MediaControlAction::SkipNext) == L"skip_next");
 static_assert(media::ParseConfigValue(L"toggle_play_pause", MediaControlAction::None)
     == MediaControlAction::TogglePlayPause);
+static_assert(media::ParseConfigValue(L"skip_previous", MediaControlAction::None)
+    == MediaControlAction::SkipPrevious);
 static_assert(media::ParseConfigValue(L"unknown", MediaControlAction::SkipNext)
     == MediaControlAction::SkipNext);
 
@@ -45,10 +48,11 @@ constexpr media::SettingData kNormalized = media::NormalizeSettings({
         MediaControlAction::SkipNext,
         MediaControlAction::None,
         MediaControlAction::TogglePlayPause,
-        MediaControlAction::SkipNext,
+        MediaControlAction::SkipPrevious,
     },
 });
 static_assert(kNormalized.max_title_width == media::kMaximumTitleWidth);
 static_assert(kNormalized.input.left_click == kDefaultSettings.input.left_click);
 static_assert(kNormalized.input.left_double_click == MediaControlAction::SkipNext);
+static_assert(kNormalized.input.wheel_down == MediaControlAction::SkipPrevious);
 static_assert(kNormalized != kDefaultSettings);

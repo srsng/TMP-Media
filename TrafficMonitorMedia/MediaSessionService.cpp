@@ -108,6 +108,9 @@ namespace
         case media::MediaControlAction::TogglePlayPause:
             static_cast<void>(session.TryTogglePlayPauseAsync().get());
             break;
+        case media::MediaControlAction::SkipPrevious:
+            static_cast<void>(session.TrySkipPreviousAsync().get());
+            break;
         case media::MediaControlAction::SkipNext:
             static_cast<void>(session.TrySkipNextAsync().get());
             break;

@@ -41,9 +41,9 @@ namespace media
         switch (playback_state)
         {
         case MediaPlaybackState::Playing:
-            return MediaStatusIcon::Playing;
-        case MediaPlaybackState::Paused:
             return MediaStatusIcon::Paused;
+        case MediaPlaybackState::Paused:
+            return MediaStatusIcon::Playing;
         case MediaPlaybackState::Unknown:
         default:
             return MediaStatusIcon::NoMedia;

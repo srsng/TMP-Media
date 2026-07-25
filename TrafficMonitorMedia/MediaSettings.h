@@ -8,6 +8,7 @@ namespace media
     {
         None,
         TogglePlayPause,
+        SkipPrevious,
         SkipNext,
     };
 
@@ -41,6 +42,7 @@ namespace media
         {
         case MediaControlAction::None:
         case MediaControlAction::TogglePlayPause:
+        case MediaControlAction::SkipPrevious:
         case MediaControlAction::SkipNext:
             return true;
         default:
@@ -88,6 +90,8 @@ namespace media
         {
         case MediaControlAction::TogglePlayPause:
             return L"toggle_play_pause";
+        case MediaControlAction::SkipPrevious:
+            return L"skip_previous";
         case MediaControlAction::SkipNext:
             return L"skip_next";
         case MediaControlAction::None:
@@ -107,6 +111,10 @@ namespace media
         if (value == L"toggle_play_pause")
         {
             return MediaControlAction::TogglePlayPause;
+        }
+        if (value == L"skip_previous")
+        {
+            return MediaControlAction::SkipPrevious;
         }
         if (value == L"skip_next")
         {

@@ -84,6 +84,7 @@ void COptionsDlg::FillActionCombo(CComboBox& combo)
     const std::array actions{
         std::pair{ IDS_ACTION_NONE, media::MediaControlAction::None },
         std::pair{ IDS_ACTION_TOGGLE_PLAY_PAUSE, media::MediaControlAction::TogglePlayPause },
+        std::pair{ IDS_ACTION_SKIP_PREVIOUS, media::MediaControlAction::SkipPrevious },
         std::pair{ IDS_ACTION_SKIP_NEXT, media::MediaControlAction::SkipNext },
     };
 

@@ -16,6 +16,7 @@
 #define IDS_ACTION_NONE                 112
 #define IDS_ACTION_TOGGLE_PLAY_PAUSE    113
 #define IDS_ACTION_SKIP_NEXT            114
+#define IDS_ACTION_SKIP_PREVIOUS        115
 
 #define IDC_SHOW_PROGRESS_CHECK         1000
 #define IDC_MAX_TITLE_WIDTH_EDIT        1001
@@ -30,7 +31,7 @@
 //
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        115
+#define _APS_NEXT_RESOURCE_VALUE        116
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1008
 #define _APS_NEXT_SYMED_VALUE           103

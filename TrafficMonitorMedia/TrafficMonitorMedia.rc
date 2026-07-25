@@ -149,6 +149,7 @@ BEGIN
     IDS_PLUGIN_ITEM_NAME            "媒体标题"
     IDS_ACTION_NONE                 "无操作"
     IDS_ACTION_TOGGLE_PLAY_PAUSE    "播放/暂停"
+    IDS_ACTION_SKIP_PREVIOUS        "上一首"
     IDS_ACTION_SKIP_NEXT            "下一首"
 END
 
@@ -216,6 +217,7 @@ BEGIN
     IDS_PLUGIN_ITEM_NAME            "Media title"
     IDS_ACTION_NONE                 "None"
     IDS_ACTION_TOGGLE_PLAY_PAUSE    "Play/Pause"
+    IDS_ACTION_SKIP_PREVIOUS        "Previous track"
     IDS_ACTION_SKIP_NEXT            "Next track"
 END
 

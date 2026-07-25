@@ -15,15 +15,16 @@ static_assert(media::CalculateProgressFraction(-1, 0, 100) == 0.0);
 static_assert(media::CalculateProgressFraction(150, 0, 100) == 1.0);
 static_assert(media::CalculateProgressFraction(10, 10, 10) == 0.0);
 
+// 图标表达点击后将执行的动作：播放中显示暂停，暂停时显示播放。
 static_assert(media::SelectMediaStatusIcon(
     media::MediaTitleState::Loading,
     media::MediaPlaybackState::Playing) == media::MediaStatusIcon::NoMedia);
 static_assert(media::SelectMediaStatusIcon(
     media::MediaTitleState::Ready,
-    media::MediaPlaybackState::Playing) == media::MediaStatusIcon::Playing);
+    media::MediaPlaybackState::Playing) == media::MediaStatusIcon::Paused);
 static_assert(media::SelectMediaStatusIcon(
     media::MediaTitleState::Ready,
-    media::MediaPlaybackState::Paused) == media::MediaStatusIcon::Paused);
+    media::MediaPlaybackState::Paused) == media::MediaStatusIcon::Playing);
 static_assert(media::SelectMediaStatusIcon(
     media::MediaTitleState::Ready,
     media::MediaPlaybackState::Unknown) == media::MediaStatusIcon::NoMedia);
@@ -38,7 +39,7 @@ static_assert(media::ResolveClickAction(
     false,
     MediaControlAction::None,
     true,
-    MediaControlAction::SkipNext) == MediaControlAction::SkipNext);
+    MediaControlAction::SkipPrevious) == MediaControlAction::SkipPrevious);
 static_assert(media::ResolveClickAction(
     true,
     MediaControlAction::TogglePlayPause,
@@ -50,5 +51,6 @@ static_assert(media::ResolveClickAction(
     true,
     MediaControlAction::SkipNext) == MediaControlAction::None);
 static_assert(media::ShouldScheduleSingleClick(MediaControlAction::SkipNext, false));
+static_assert(media::ShouldScheduleSingleClick(MediaControlAction::SkipPrevious, false));
 static_assert(!media::ShouldScheduleSingleClick(MediaControlAction::None, false));
 static_assert(!media::ShouldScheduleSingleClick(MediaControlAction::TogglePlayPause, true));
