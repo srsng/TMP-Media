@@ -81,6 +81,41 @@ namespace media
         }
     }
 
+    struct TitleLineLayout
+    {
+        std::wstring_view primary;
+        std::wstring_view secondary;
+        bool split_lines{};
+    };
+
+    [[nodiscard]] constexpr TitleLineLayout SelectTitleLineLayout(
+        MediaTitleState state,
+        std::wstring_view title,
+        std::wstring_view artist,
+        std::wstring_view source_app_id,
+        bool show_artist_on_second_line) noexcept
+    {
+        const std::wstring_view primary = SelectDisplayText(state, title, source_app_id);
+        if (state == MediaTitleState::Ready && show_artist_on_second_line && !artist.empty())
+        {
+            return { primary, artist, true };
+        }
+        return { primary, {}, false };
+    }
+    [[nodiscard]] constexpr int CalculateTwoLineTextHeight(
+        int available_height,
+        int line_height) noexcept
+    {
+        if (available_height <= 0 || line_height <= 0)
+        {
+            return 0;
+        }
+        if (line_height >= (available_height + 1) / 2)
+        {
+            return available_height;
+        }
+        return line_height * 2;
+    }
     [[nodiscard]] constexpr double CalculateProgressFraction(
         std::int64_t position,
         std::int64_t start,

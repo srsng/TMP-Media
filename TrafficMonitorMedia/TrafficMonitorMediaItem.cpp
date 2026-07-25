@@ -61,6 +61,11 @@ bool CTrafficMonitorMediaItem::IsCustomDraw() const
     return true;
 }
 
+int CTrafficMonitorMediaItem::IsDoubleLineExclusive() const
+{
+    return 1;
+}
+
 int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
 {
     CDC* pDC = CDC::FromHandle(static_cast<HDC>(hDC));
@@ -72,15 +77,26 @@ int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
 
     const media::SettingData settings = g_plugin.GetSettingsSnapshot();
     const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
-    const std::wstring text(media::SelectDisplayText(
+    const media::TitleLineLayout lines = media::SelectTitleLineLayout(
         snapshot.state,
         snapshot.title,
-        snapshot.source_app_id));
+        snapshot.artist,
+        snapshot.source_app_id,
+        settings.show_artist_on_second_line);
+    const std::wstring primary(lines.primary);
+    const std::wstring secondary(lines.secondary);
 
     const int padding = g_plugin.DPI(kHorizontalPadding96Dpi);
     const int minimum_text_width = g_plugin.DPI(kMinimumWidth96Dpi);
     const int maximum_text_width = g_plugin.DPI(settings.max_title_width);
-    const int requested_text_width = pDC->GetTextExtent(text.c_str()).cx + padding * 2;
+    int measured_text_width = pDC->GetTextExtent(primary.c_str()).cx;
+    if (lines.split_lines)
+    {
+        measured_text_width = (std::max)(
+            measured_text_width,
+            static_cast<int>(pDC->GetTextExtent(secondary.c_str()).cx));
+    }
+    const int requested_text_width = measured_text_width + padding * 2;
     const int text_width = std::clamp(
         requested_text_width,
         minimum_text_width,
@@ -133,20 +149,58 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
             DI_NORMAL);
     }
 
-    const std::wstring text(media::SelectDisplayText(
+    const media::TitleLineLayout lines = media::SelectTitleLineLayout(
         snapshot.state,
         snapshot.title,
-        snapshot.source_app_id));
+        snapshot.artist,
+        snapshot.source_app_id,
+        settings.show_artist_on_second_line);
+    const std::wstring primary(lines.primary);
+    const std::wstring secondary(lines.secondary);
     const int text_x = x + padding + icon_size + icon_gap;
     const int text_width = (std::max)(0, w - padding * 2 - icon_size - icon_gap);
     CRect text_rect(CPoint(text_x, y), CSize(text_width, content_height));
 
     const COLORREF old_text_color = pDC->SetTextColor(dark_mode ? RGB(245, 245, 245) : RGB(32, 32, 32));
     const int old_background_mode = pDC->SetBkMode(TRANSPARENT);
-    pDC->DrawText(
-        text.c_str(),
-        text_rect,
-        DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+    if (lines.split_lines)
+    {
+        const int first_line_height = content_height / 2;
+        CRect primary_rect(text_rect);
+        primary_rect.bottom = primary_rect.top + first_line_height;
+        CRect secondary_rect(text_rect);
+        secondary_rect.top = primary_rect.bottom;
+        pDC->DrawText(
+            primary.c_str(),
+            primary_rect,
+            DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+        pDC->DrawText(
+            secondary.c_str(),
+            secondary_rect,
+            DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+    }
+    else
+    {
+        TEXTMETRIC text_metrics{};
+        const int line_height = pDC->GetTextMetrics(&text_metrics)
+            ? text_metrics.tmHeight
+            : content_height;
+        const int maximum_text_height = media::CalculateTwoLineTextHeight(
+            content_height,
+            line_height);
+        CRect measured_rect(0, 0, text_width, 0);
+        pDC->DrawText(
+            primary.c_str(),
+            measured_rect,
+            DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
+        const int drawn_text_height = (std::min)(maximum_text_height, measured_rect.Height());
+        text_rect.top += (content_height - drawn_text_height) / 2;
+        text_rect.bottom = text_rect.top + drawn_text_height;
+        pDC->DrawText(
+            primary.c_str(),
+            text_rect,
+            DT_WORDBREAK | DT_EDITCONTROL | DT_END_ELLIPSIS | DT_NOPREFIX);
+    }
     pDC->SetBkMode(old_background_mode);
     pDC->SetTextColor(old_text_color);
 

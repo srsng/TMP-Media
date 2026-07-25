@@ -5,6 +5,7 @@ using media::MediaControlAction;
 
 constexpr media::SettingData kDefaultSettings{};
 static_assert(kDefaultSettings.show_progress);
+static_assert(kDefaultSettings.show_artist_on_second_line);
 static_assert(kDefaultSettings.max_title_width == media::kDefaultMaxTitleWidth);
 static_assert(kDefaultSettings.input.left_click == MediaControlAction::TogglePlayPause);
 static_assert(kDefaultSettings.input.left_double_click == MediaControlAction::SkipNext);
@@ -13,6 +14,7 @@ static_assert(kDefaultSettings.input.wheel_up == MediaControlAction::None);
 static_assert(kDefaultSettings.input.wheel_down == MediaControlAction::None);
 
 constexpr media::SettingData kRepeatedBindings{
+    true,
     true,
     400,
     {
@@ -41,6 +43,7 @@ static_assert(media::ParseConfigValue(L"unknown", MediaControlAction::SkipNext)
     == MediaControlAction::SkipNext);
 
 constexpr media::SettingData kNormalized = media::NormalizeSettings({
+    true,
     true,
     5000,
     {

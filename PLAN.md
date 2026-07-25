@@ -4,7 +4,7 @@
 
 - 初始化基线已完成：官方 `PluginTemplate` 已机械重命名为 `TrafficMonitorMedia`，官方 `PluginInterface.h` 已放入 `include/`。
 - `TrafficMonitorMedia.sln` 由 `dotnet sln` 创建，工程可在 Visual Studio 中打开；工程本体来自官方模板，不是手写项目文件。
-- 当前处于 Phase 3（P1 当前媒体标题）开始前；尚未接入媒体逻辑。
+- Phase 5.6 的代码实现和自动构建验证已完成；当前等待 TrafficMonitor / PluginTester 人工验收双行布局与艺术家选项。
 
 ## 硬性规则
 
@@ -40,6 +40,7 @@
 - [x] 已使用 v145 成功构建 `Release|x64`，并确认 DLL 与 `TMPluginGetInstance` 导出。
 - [x] 已添加 `.gitignore` 与本地 `justfile`，固化构建、导出验证和受限清理命令；`justfile` 含本机 VS 路径并已被 Git 忽略。
 - [x] Phase 3：P1 当前媒体标题已完成自动验证和 PluginTester 人工加载/显示验证。
+- [x] Phase 5.6：已完整同步官方 API 8 接口，实现标题项独占双行及“第二行显示艺术家”选项；自动验证完成，人工验收待执行。
 
 ### 构建验证记录（2026-07-24）
 
@@ -251,13 +252,13 @@ TMP-media/
 
 详细设计、实施顺序和验收项见 `OPTIONS_PLAN.md`。
 
-### Phase 5.6：始终双行的标题显示项（已确认设计，待实施）
+### Phase 5.6：始终双行的标题显示项（代码与自动验证已完成，待人工验收）
 
-接口依据与前置条件：
+接口依据与实施结果：
 
 - TrafficMonitor 官方 API 8 提供 `IPluginItem::IsDoubleLineExclusive()`；返回 `1` 后，宿主会为该显示项分配完整双行，并阻止其他项目与其共列。
-- 当前仓库的 `include/PluginInterface.h` 仍是 API 7，缺少该方法；实施前必须从本地官方仓库 `D:\projects\cplusplus\TrafficMonitor\include\PluginInterface.h` **完整同步** API 8 头文件，禁止手写或只追加虚函数。
-- 本轮只记录计划，不修改接口头文件；实际同步前继续遵守“不要擅自修改 `include/PluginInterface.h`”的约束，并由用户确认同步时机。
+- 已在用户确认后，从本地官方仓库 `D:\projects\cplusplus\TrafficMonitor\include\PluginInterface.h` 完整同步 API 8 头文件；复制后两份文件 SHA-256 一致，未局部手写或拼接 ABI。
+- API 8 同步后的现有插件基线先通过 `Debug|x64` 构建，再开始本阶段功能修改。
 
 实现：
 
@@ -356,7 +357,6 @@ API 可行性已经确认：`ITMPlugin::GetItem(index)` 允许同一插件 DLL �
 
 ## 下一步
 
-1. 先实施 Phase 5.6：在用户确认同步时机后，完整同步官方 API 8 `PluginInterface.h`，实现标题项始终独占双行及“第二行显示艺术家”选项。
-2. 自动构建通过后，由用户使用 PluginTester / TrafficMonitor 人工验证双行独占、艺术家开关及原有控制功能。
-3. 随后进入 Phase 6 多会话切换。
-4. P4 按 Phase 7 新增独立歌词显示项，不再占用标题项第二行。
+1. 由用户使用 PluginTester / TrafficMonitor 人工验证 Phase 5.6 的双行独占、艺术家开关及原有控制功能。
+2. 人工验收通过后进入 Phase 6 多会话切换。
+3. P4 按 Phase 7 新增独立歌词显示项，不再占用标题项第二行。

@@ -8,6 +8,58 @@ static_assert(media::SelectDisplayText(media::MediaTitleState::Ready, L"", L"Pla
 static_assert(media::SelectDisplayText(media::MediaTitleState::NoSession, L"", L"") == media::kNoMediaText);
 static_assert(media::SelectDisplayText(media::MediaTitleState::Error, L"", L"") == media::kUnavailableMediaText);
 
+constexpr media::TitleLineLayout kTitleAndArtist = media::SelectTitleLineLayout(
+    media::MediaTitleState::Ready,
+    L"Song",
+    L"Artist",
+    L"Player",
+    true);
+static_assert(kTitleAndArtist.primary == L"Song");
+static_assert(kTitleAndArtist.secondary == L"Artist");
+static_assert(kTitleAndArtist.split_lines);
+
+constexpr media::TitleLineLayout kTitleOnlyByOption = media::SelectTitleLineLayout(
+    media::MediaTitleState::Ready,
+    L"Song",
+    L"Artist",
+    L"Player",
+    false);
+static_assert(kTitleOnlyByOption.primary == L"Song");
+static_assert(kTitleOnlyByOption.secondary.empty());
+static_assert(!kTitleOnlyByOption.split_lines);
+
+constexpr media::TitleLineLayout kTitleOnlyWithoutArtist = media::SelectTitleLineLayout(
+    media::MediaTitleState::Ready,
+    L"Song",
+    L"",
+    L"Player",
+    true);
+static_assert(kTitleOnlyWithoutArtist.primary == L"Song");
+static_assert(kTitleOnlyWithoutArtist.secondary.empty());
+static_assert(!kTitleOnlyWithoutArtist.split_lines);
+
+constexpr media::TitleLineLayout kNoMediaTwoLineTitle = media::SelectTitleLineLayout(
+    media::MediaTitleState::NoSession,
+    L"",
+    L"",
+    L"",
+    true);
+static_assert(kNoMediaTwoLineTitle.primary == media::kNoMediaText);
+static_assert(kNoMediaTwoLineTitle.secondary.empty());
+static_assert(!kNoMediaTwoLineTitle.split_lines);
+
+constexpr media::TitleLineLayout kNoMediaIgnoresStaleArtist = media::SelectTitleLineLayout(
+    media::MediaTitleState::NoSession,
+    L"",
+    L"Stale Artist",
+    L"",
+    true);
+static_assert(kNoMediaIgnoresStaleArtist.primary == media::kNoMediaText);
+static_assert(kNoMediaIgnoresStaleArtist.secondary.empty());
+static_assert(!kNoMediaIgnoresStaleArtist.split_lines);
+static_assert(media::CalculateTwoLineTextHeight(100, 16) == 32);
+static_assert(media::CalculateTwoLineTextHeight(20, 16) == 20);
+static_assert(media::CalculateTwoLineTextHeight(20, 0) == 0);
 static_assert(media::CalculateProgressFraction(0, 0, 100) == 0.0);
 static_assert(media::CalculateProgressFraction(25, 0, 100) == 0.25);
 static_assert(media::CalculateProgressFraction(40, 10, 130) == 0.25);

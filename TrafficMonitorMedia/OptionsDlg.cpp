@@ -17,6 +17,7 @@ void COptionsDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialog::DoDataExchange(pDX);
     DDX_Check(pDX, IDC_SHOW_PROGRESS_CHECK, m_show_progress);
+    DDX_Check(pDX, IDC_SHOW_ARTIST_SECOND_LINE_CHECK, m_show_artist_on_second_line);
     DDX_Text(pDX, IDC_MAX_TITLE_WIDTH_EDIT, m_max_title_width);
     DDV_MinMaxInt(pDX, m_max_title_width, media::kMinimumTitleWidth, media::kMaximumTitleWidth);
     DDX_Control(pDX, IDC_MAX_TITLE_WIDTH_SPIN, m_max_title_width_spin);
@@ -36,6 +37,7 @@ BOOL COptionsDlg::OnInitDialog()
 
     m_data = media::NormalizeSettings(m_data);
     m_show_progress = m_data.show_progress ? TRUE : FALSE;
+    m_show_artist_on_second_line = m_data.show_artist_on_second_line ? TRUE : FALSE;
     m_max_title_width = m_data.max_title_width;
     UpdateData(FALSE);
 
@@ -66,6 +68,7 @@ void COptionsDlg::OnOK()
 
     media::SettingData updated = m_data;
     updated.show_progress = m_show_progress != FALSE;
+    updated.show_artist_on_second_line = m_show_artist_on_second_line != FALSE;
     updated.max_title_width = m_max_title_width;
     updated.input.left_click = ReadAction(m_left_click_combo, updated.input.left_click);
     updated.input.left_double_click = ReadAction(
