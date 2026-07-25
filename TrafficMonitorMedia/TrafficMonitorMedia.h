@@ -34,6 +34,10 @@ public:
     HICON GetIcon(UINT id);
     int DPI(int pixel);
     [[nodiscard]] std::wstring GetMediaDisplayText() const;
+    [[nodiscard]] bool HasMediaTimeline() const;
+    [[nodiscard]] double GetMediaProgressFraction() const;
+    void RequestTogglePlayPause();
+    void RequestSkipNext();
 
     SettingData m_setting_data;
 

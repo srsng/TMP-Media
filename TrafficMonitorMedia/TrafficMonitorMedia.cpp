@@ -144,6 +144,26 @@ std::wstring CTrafficMonitorMedia::GetMediaDisplayText() const
     return m_media_service.GetDisplayText();
 }
 
+bool CTrafficMonitorMedia::HasMediaTimeline() const
+{
+    return m_media_service.HasTimeline();
+}
+
+double CTrafficMonitorMedia::GetMediaProgressFraction() const
+{
+    return m_media_service.GetProgressFraction();
+}
+
+void CTrafficMonitorMedia::RequestTogglePlayPause()
+{
+    m_media_service.RequestTogglePlayPause();
+}
+
+void CTrafficMonitorMedia::RequestSkipNext()
+{
+    m_media_service.RequestSkipNext();
+}
+
 ITMPlugin* TMPluginGetInstance()
 {
     AFX_MANAGE_STATE(AfxGetStaticModuleState());

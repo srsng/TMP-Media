@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MediaSessionService.h"
 
+#include <algorithm>
 #include <chrono>
 #include <exception>
 #include <utility>
@@ -12,6 +13,8 @@ namespace
 {
     using winrt::Windows::Media::Control::GlobalSystemMediaTransportControlsSession;
     using winrt::Windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager;
+
+    constexpr auto kRefreshInterval = std::chrono::seconds(1);
 
     std::wstring ToWString(const winrt::hstring& value)
     {
@@ -52,7 +55,41 @@ namespace
             snapshot.title = ToWString(properties.Title());
             snapshot.artist = ToWString(properties.Artist());
         }
+
+        const auto timeline = session.GetTimelineProperties();
+        if (timeline)
+        {
+            const std::int64_t start = timeline.StartTime().count();
+            const std::int64_t end = timeline.EndTime().count();
+            const std::int64_t position = timeline.Position().count();
+            snapshot.has_timeline = end > start;
+            snapshot.progress_fraction = media::CalculateProgressFraction(position, start, end);
+        }
         return snapshot;
+    }
+
+    void ExecuteControlAction(
+        const GlobalSystemMediaTransportControlsSessionManager& manager,
+        media::MediaControlAction action)
+    {
+        const GlobalSystemMediaTransportControlsSession session = manager.GetCurrentSession();
+        if (!session)
+        {
+            return;
+        }
+
+        switch (action)
+        {
+        case media::MediaControlAction::TogglePlayPause:
+            static_cast<void>(session.TryTogglePlayPauseAsync().get());
+            break;
+        case media::MediaControlAction::SkipNext:
+            static_cast<void>(session.TrySkipNextAsync().get());
+            break;
+        case media::MediaControlAction::None:
+        default:
+            break;
+        }
     }
 }
 
@@ -71,6 +108,9 @@ void CMediaSessionService::Start()
 
     m_stop_requested = false;
     m_refresh_requested = true;
+    m_control_actions.clear();
+    m_pending_single_click_deadline.reset();
+    m_suppress_single_click_until = {};
     m_worker = std::thread(&CMediaSessionService::WorkerLoop, this);
     m_started = true;
 }
@@ -85,6 +125,8 @@ void CMediaSessionService::Stop()
         }
         m_stop_requested = true;
         m_refresh_requested = true;
+        m_control_actions.clear();
+        m_pending_single_click_deadline.reset();
     }
     m_worker_cv.notify_one();
 
@@ -106,6 +148,43 @@ void CMediaSessionService::RequestRefresh()
             return;
         }
         m_refresh_requested = true;
+    }
+    m_worker_cv.notify_one();
+}
+
+void CMediaSessionService::RequestTogglePlayPause()
+{
+    {
+        std::lock_guard<std::mutex> lock(m_worker_mutex);
+        if (!m_started)
+        {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        if (!media::ShouldScheduleSingleClick(now < m_suppress_single_click_until))
+        {
+            return;
+        }
+
+        m_pending_single_click_deadline = now + std::chrono::milliseconds(GetDoubleClickTime());
+    }
+    m_worker_cv.notify_one();
+}
+
+void CMediaSessionService::RequestSkipNext()
+{
+    {
+        std::lock_guard<std::mutex> lock(m_worker_mutex);
+        if (!m_started)
+        {
+            return;
+        }
+
+        const auto double_click_interval = std::chrono::milliseconds(GetDoubleClickTime());
+        m_pending_single_click_deadline.reset();
+        m_suppress_single_click_until = std::chrono::steady_clock::now() + double_click_interval;
+        m_control_actions.push_back(media::MediaControlAction::SkipNext);
     }
     m_worker_cv.notify_one();
 }
@@ -146,27 +225,54 @@ std::wstring CMediaSessionService::GetTooltipText() const
     return tooltip;
 }
 
+bool CMediaSessionService::HasTimeline() const
+{
+    return GetSnapshot().has_timeline;
+}
+
+double CMediaSessionService::GetProgressFraction() const
+{
+    return GetSnapshot().progress_fraction;
+}
+
 void CMediaSessionService::WorkerLoop()
 {
     try
     {
         winrt::init_apartment(winrt::apartment_type::multi_threaded);
         GlobalSystemMediaTransportControlsSessionManager manager{ nullptr };
+        auto next_periodic_refresh = std::chrono::steady_clock::now();
 
-        while (WaitForRefreshRequest())
+        while (true)
         {
+            const WorkerRequest request = WaitForWork(next_periodic_refresh);
+            if (request.stop)
+            {
+                return;
+            }
+
             try
             {
                 if (!manager)
                 {
                     manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
                 }
-                Publish(ReadCurrentSession(manager));
+
+                if (request.action != media::MediaControlAction::None)
+                {
+                    ExecuteControlAction(manager, request.action);
+                }
+                if (request.refresh || request.action != media::MediaControlAction::None)
+                {
+                    Publish(ReadCurrentSession(manager));
+                    next_periodic_refresh = std::chrono::steady_clock::now() + kRefreshInterval;
+                }
             }
             catch (const winrt::hresult_error& error)
             {
                 manager = nullptr;
                 Publish(MakeErrorSnapshot(ToWString(error.message())));
+                next_periodic_refresh = std::chrono::steady_clock::now() + kRefreshInterval;
             }
         }
     }
@@ -180,21 +286,57 @@ void CMediaSessionService::WorkerLoop()
     }
 }
 
-bool CMediaSessionService::WaitForRefreshRequest()
+CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
+    std::chrono::steady_clock::time_point next_periodic_refresh)
 {
     std::unique_lock<std::mutex> lock(m_worker_mutex);
-    m_worker_cv.wait_for(lock, std::chrono::seconds(1), [this]
-    {
-        return m_stop_requested || m_refresh_requested;
-    });
 
-    if (m_stop_requested)
+    while (true)
     {
-        return false;
+        if (m_stop_requested)
+        {
+            return { .stop = true };
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const bool has_double_click = !m_control_actions.empty()
+            && m_control_actions.front() == media::MediaControlAction::SkipNext;
+        const bool has_matured_single_click = m_pending_single_click_deadline.has_value()
+            && now >= *m_pending_single_click_deadline;
+        const media::MediaControlAction action = media::ResolveClickAction(
+            has_double_click,
+            has_matured_single_click);
+
+        if (action != media::MediaControlAction::None)
+        {
+            if (has_double_click)
+            {
+                m_control_actions.pop_front();
+            }
+            if (has_matured_single_click)
+            {
+                m_pending_single_click_deadline.reset();
+            }
+            return { .action = action };
+        }
+
+        if (m_refresh_requested || now >= next_periodic_refresh)
+        {
+            m_refresh_requested = false;
+            return { .refresh = true };
+        }
+
+        auto wake_time = next_periodic_refresh;
+        if (m_pending_single_click_deadline.has_value())
+        {
+            wake_time = (std::min)(wake_time, *m_pending_single_click_deadline);
+        }
+
+        m_worker_cv.wait_until(lock, wake_time, [this]
+        {
+            return m_stop_requested || m_refresh_requested || !m_control_actions.empty();
+        });
     }
-
-    m_refresh_requested = false;
-    return true;
 }
 
 void CMediaSessionService::Publish(MediaTitleSnapshot snapshot)
