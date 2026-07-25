@@ -40,7 +40,7 @@
 - [x] 已由 dotnet 工具创建 `TrafficMonitorMedia.sln`，并在设置 `VCTargetsPath` 后加入 C++ 工程。
 - [x] 已使用 v145 成功构建 `Release|x64`，并确认 DLL 与 `TMPluginGetInstance` 导出。
 - [x] 已添加 `.gitignore` 与本地 `justfile`，固化构建、导出验证和受限清理命令；`justfile` 含本机 VS 路径并已被 Git 忽略。
-- [ ] 开始 Phase 3：P1 当前媒体标题。
+- [x] Phase 3：P1 当前媒体标题已完成自动验证和 PluginTester 人工加载/显示验证。
 
 ### 构建验证记录（2026-07-24）
 
@@ -52,6 +52,16 @@
 - 产物：`TrafficMonitorMedia\\bin\\x64\\Release\\TrafficMonitorMedia.dll`。
 - 编译有 C4819 编码警告（模板的 UTF-8 中文注释被当前代码页 936 编译）；不影响本次 DLL 构建与导出验证。尚未改动编码设置，后续清理警告前先单独确认。
 
+### Phase 3 自动验证记录（2026-07-25）
+
+- 新增 `CMediaSessionService`：在独立 MTA 工作线程中请求 GSMTC manager，每秒轮询或响应 `DataRequired()` 的刷新请求；UI / 绘制线程只读取互斥保护的媒体快照。
+- 当前会话有标题时显示标题；标题为空时回退到来源应用 ID；无会话时显示“未检测到媒体”；媒体 API 失败时显示“媒体不可用”，错误详情进入 Tooltip。
+- `CTrafficMonitorMediaItem` 采用单行自绘，垂直居中、超长标题省略；宽度按标题文本计算并限制在 100–400 个 96 DPI 像素之间。
+- `MediaTextTests.cpp` 的 `static_assert` 已作为同一插件工程的编译单元参与构建，覆盖加载中、标题优先、来源应用回退、无会话、错误等纯逻辑。
+- `just rebuild Debug x64` 与 `just check Release x64` 已成功；两个配置的 DLL 均已验证导出 `TMPluginGetInstance`。
+- 已人工验证：PluginTester 可加载 `bin\x64\Release\TrafficMonitorMedia.dll`；播放媒体时标题正常显示；显示项名称“媒体标题”仅作为 PluginTester 的调试辅助信息，不属于任务栏自绘内容。
+- 修复资源乱码：`TrafficMonitorMedia.rc` 为 UTF-8，中文资源段必须使用 `#pragma code_page(65001)`，不能使用 GBK 的 `936`；已从构建出的 DLL 读取并确认插件名、描述、显示项名称均为正常中文。
+- 实际任务栏整体位置由 TrafficMonitor 主程序管理，插件接口无法移动其整体区域。
 ### 当前执行顺序
 
 1. 在 `D:\projects\cplusplus` 下克隆 `TrafficMonitorPlugins` 官方仓库，并从同级仓库取得 `PluginTemplate` 和 `PluginInterface.h` 原文件。

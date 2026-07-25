@@ -1,14 +1,14 @@
 #pragma once
 #include "..\include\PluginInterface.h"
+#include "MediaSessionService.h"
 #include "TrafficMonitorMediaItem.h"
-#include <string>
 #include <map>
+#include <string>
 
 #define g_plugin CTrafficMonitorMedia::Instance()
 
 struct SettingData
 {
-    //TODO: 在此添加选项设置的数据
 };
 
 class CTrafficMonitorMedia : public ITMPlugin
@@ -30,21 +30,22 @@ public:
 
     void LoadConfig(const std::wstring& config_dir);
     void SaveConfig() const;
-    const CString& StringRes(UINT id);      //根据资源id获取一个字符串资源
+    const CString& StringRes(UINT id);
     HICON GetIcon(UINT id);
     int DPI(int pixel);
+    [[nodiscard]] std::wstring GetMediaDisplayText() const;
 
     SettingData m_setting_data;
 
 private:
     static CTrafficMonitorMedia m_instance;
     CTrafficMonitorMediaItem m_item;
+    CMediaSessionService m_media_service;
     std::wstring m_tooltip_info;
     std::wstring m_config_path;
     std::map<UINT, CString> m_string_table;
     std::map<UINT, HICON> m_icons;
     ITrafficMonitor* m_app{};
-
 };
 
 #ifdef __cplusplus

@@ -17,7 +17,7 @@
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
-#pragma code_page(936)
+#pragma code_page(65001)
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -123,8 +123,8 @@ BEGIN
     BEGIN
         BLOCK "080404b0"
         BEGIN
-            VALUE "CompanyName", "<TODO: Company name>"
-            VALUE "FileDescription", "<TODO: plugin name> Plugin for TrafficMonitor"
+            VALUE "CompanyName", "TMP-media"
+            VALUE "FileDescription", "TrafficMonitorMedia Plugin for TrafficMonitor"
             VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "TrafficMonitorMedia.dll"
             VALUE "LegalCopyright", "Copyright (C) 2021"
@@ -157,9 +157,9 @@ IDI_ICON1               ICON                    "res\\icon.ico"
 
 STRINGTABLE
 BEGIN
-    IDS_PLUGIN_NAME         "<TODO: �������>"
-    IDS_PLUGIN_DESCRIPTION  "<TODO: �������>"
-    IDS_PLUGIN_ITEM_NAME    "<TODO: �����Ŀ��>"
+    IDS_PLUGIN_NAME         "TrafficMonitorMedia"
+    IDS_PLUGIN_DESCRIPTION  "在任务栏显示当前媒体标题"
+    IDS_PLUGIN_ITEM_NAME    "媒体标题"
 END
 
 #endif    // ����(���壬�й�) resources
@@ -225,9 +225,9 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_PLUGIN_NAME         "<TODO: plugin name>"
-    IDS_PLUGIN_DESCRIPTION  "<TODO: plugin template>"
-    IDS_PLUGIN_ITEM_NAME    "<TODO: plugin name>"
+    IDS_PLUGIN_NAME         "TrafficMonitorMedia"
+    IDS_PLUGIN_DESCRIPTION  "Display the current media title in the taskbar"
+    IDS_PLUGIN_ITEM_NAME    "Media title"
 END
 
 #endif    // Ӣ��(����) resources

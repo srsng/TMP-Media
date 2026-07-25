@@ -11,6 +11,7 @@ CTrafficMonitorMedia::CTrafficMonitorMedia()
 
 CTrafficMonitorMedia::~CTrafficMonitorMedia()
 {
+    m_media_service.Stop();
     SaveConfig();
 }
 
@@ -26,19 +27,20 @@ IPluginItem* CTrafficMonitorMedia::GetItem(int index)
     case 0:
         return &m_item;
     default:
-        break;
+        return nullptr;
     }
-    return nullptr;
 }
 
 const wchar_t* CTrafficMonitorMedia::GetTooltipInfo()
 {
+    m_tooltip_info = m_media_service.GetTooltipText();
     return m_tooltip_info.c_str();
 }
 
 void CTrafficMonitorMedia::DataRequired()
 {
-    //TODO: 在此添加获取监控数据的代码
+    // 此函数由 TrafficMonitor 定时调用；只通知后台线程刷新，绝不在 UI 线程阻塞等待 GSMTC。
+    m_media_service.RequestRefresh();
 }
 
 ITMPlugin::OptionReturn CTrafficMonitorMedia::ShowOptionsDialog(void* hParent)
@@ -58,7 +60,6 @@ ITMPlugin::OptionReturn CTrafficMonitorMedia::ShowOptionsDialog(void* hParent)
 
 const wchar_t* CTrafficMonitorMedia::GetInfo(PluginInfoIndex index)
 {
-    static CString str;
     switch (index)
     {
     case TMI_NAME:
@@ -66,22 +67,16 @@ const wchar_t* CTrafficMonitorMedia::GetInfo(PluginInfoIndex index)
     case TMI_DESCRIPTION:
         return StringRes(IDS_PLUGIN_DESCRIPTION).GetString();
     case TMI_AUTHOR:
-        //TODO: 在此返回作者的名字
-        return L"";
+        return L"TMP-media";
     case TMI_COPYRIGHT:
-        //TODO: 在此返回版权信息
-        return L"Copyright (C) by XXX 2021";
-    case ITMPlugin::TMI_URL:
-        //TODO: 在此返回URL
-        return L"";
-        break;
+        return L"Copyright (C) TMP-media";
+    case TMI_URL:
+        return L"https://github.com/zhongyang219/TrafficMonitor";
     case TMI_VERSION:
-        //TODO: 在此修改插件的版本
-        return L"1.00";
+        return L"0.1.0";
     default:
-        break;
+        return L"";
     }
-    return L"";
 }
 
 void CTrafficMonitorMedia::OnInitialize(ITrafficMonitor* pApp)
@@ -89,6 +84,7 @@ void CTrafficMonitorMedia::OnInitialize(ITrafficMonitor* pApp)
     m_app = pApp;
     std::wstring config_dir = pApp->GetPluginConfigDir();
     LoadConfig(config_dir);
+    m_media_service.Start();
 }
 
 void* CTrafficMonitorMedia::GetPluginIcon()
@@ -98,14 +94,11 @@ void* CTrafficMonitorMedia::GetPluginIcon()
 
 void CTrafficMonitorMedia::LoadConfig(const std::wstring& config_dir)
 {
-    //TODO: 更改配置文件的文件名
-    m_config_path = config_dir + L"KeyboardIndicator.ini";
-    //TODO: 在此添加载入配置的代码
+    m_config_path = config_dir + L"TrafficMonitorMedia.ini";
 }
 
 void CTrafficMonitorMedia::SaveConfig() const
 {
-    //TODO: 在此添加保存设置的代码
 }
 
 const CString& CTrafficMonitorMedia::StringRes(UINT id)
@@ -115,12 +108,10 @@ const CString& CTrafficMonitorMedia::StringRes(UINT id)
     {
         return iter->second;
     }
-    else
-    {
-        AFX_MANAGE_STATE(AfxGetStaticModuleState());
-        m_string_table[id].LoadString(id);
-        return m_string_table[id];
-    }
+
+    AFX_MANAGE_STATE(AfxGetStaticModuleState());
+    m_string_table[id].LoadString(id);
+    return m_string_table[id];
 }
 
 HICON CTrafficMonitorMedia::GetIcon(UINT id)
@@ -130,13 +121,12 @@ HICON CTrafficMonitorMedia::GetIcon(UINT id)
     {
         return iter->second;
     }
-    else
-    {
-        AFX_MANAGE_STATE(AfxGetStaticModuleState());
-        HICON hIcon = (HICON)LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(id), IMAGE_ICON, DPI(16), DPI(16), 0);
-        m_icons[id] = hIcon;
-        return hIcon;
-    }
+
+    AFX_MANAGE_STATE(AfxGetStaticModuleState());
+    HICON hIcon = static_cast<HICON>(
+        LoadImage(AfxGetInstanceHandle(), MAKEINTRESOURCE(id), IMAGE_ICON, DPI(16), DPI(16), 0));
+    m_icons[id] = hIcon;
+    return hIcon;
 }
 
 int CTrafficMonitorMedia::DPI(int pixel)
@@ -147,6 +137,11 @@ int CTrafficMonitorMedia::DPI(int pixel)
         return dpi * pixel / 96;
     }
     return pixel;
+}
+
+std::wstring CTrafficMonitorMedia::GetMediaDisplayText() const
+{
+    return m_media_service.GetDisplayText();
 }
 
 ITMPlugin* TMPluginGetInstance()

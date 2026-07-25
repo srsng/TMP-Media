@@ -2,6 +2,15 @@
 #include "TrafficMonitorMediaItem.h"
 #include "TrafficMonitorMedia.h"
 
+#include <algorithm>
+
+namespace
+{
+    constexpr int kHorizontalPadding96Dpi = 8;
+    constexpr int kMinimumWidth96Dpi = 100;
+    constexpr int kMaximumWidth96Dpi = 400;
+}
+
 const wchar_t* CTrafficMonitorMediaItem::GetItemName() const
 {
     return g_plugin.StringRes(IDS_PLUGIN_ITEM_NAME);
@@ -9,8 +18,7 @@ const wchar_t* CTrafficMonitorMediaItem::GetItemName() const
 
 const wchar_t* CTrafficMonitorMediaItem::GetItemId() const
 {
-	//TODO: 在此返回插件的唯一ID，建议只包含字母和数字
-    return L"";
+    return L"TrafficMonitorMediaTitle";
 }
 
 const wchar_t* CTrafficMonitorMediaItem::GetItemLableText() const
@@ -30,23 +38,43 @@ const wchar_t* CTrafficMonitorMediaItem::GetItemValueSampleText() const
 
 bool CTrafficMonitorMediaItem::IsCustomDraw() const
 {
-	//TODO: 根据是否由插件自绘返回对应的值
     return true;
 }
 
-int CTrafficMonitorMediaItem::GetItemWidthEx(void * hDC) const
+int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
 {
-    //绘图句柄
-    CDC* pDC = CDC::FromHandle((HDC)hDC);
-    //TODO: 如果插件需要自绘，则在此修改显示区域的宽度
-    return 60;
+    CDC* pDC = CDC::FromHandle(static_cast<HDC>(hDC));
+    if (pDC == nullptr)
+    {
+        return g_plugin.DPI(kMinimumWidth96Dpi);
+    }
+
+    const std::wstring text = g_plugin.GetMediaDisplayText();
+    const int padding = g_plugin.DPI(kHorizontalPadding96Dpi);
+    const int minimum_width = g_plugin.DPI(kMinimumWidth96Dpi);
+    const int maximum_width = g_plugin.DPI(kMaximumWidth96Dpi);
+    const int requested_width = pDC->GetTextExtent(text.c_str()).cx + padding * 2;
+    return std::clamp(requested_width, minimum_width, maximum_width);
 }
 
 void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, bool dark_mode)
 {
-    //绘图句柄
-    CDC* pDC = CDC::FromHandle((HDC)hDC);
-    //矩形区域
-    CRect rect(CPoint(x, y), CSize(w, h));
-    //TODO: 在此添加绘图代码
+    CDC* pDC = CDC::FromHandle(static_cast<HDC>(hDC));
+    if (pDC == nullptr)
+    {
+        return;
+    }
+
+    const std::wstring text = g_plugin.GetMediaDisplayText();
+    const int padding = g_plugin.DPI(kHorizontalPadding96Dpi);
+    CRect text_rect(CPoint(x + padding, y), CSize((std::max)(0, w - padding * 2), h));
+
+    const COLORREF old_text_color = pDC->SetTextColor(dark_mode ? RGB(245, 245, 245) : RGB(32, 32, 32));
+    const int old_background_mode = pDC->SetBkMode(TRANSPARENT);
+    pDC->DrawText(
+        text.c_str(),
+        text_rect,
+        DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+    pDC->SetBkMode(old_background_mode);
+    pDC->SetTextColor(old_text_color);
 }
