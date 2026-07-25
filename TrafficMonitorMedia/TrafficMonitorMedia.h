@@ -4,6 +4,7 @@
 #include "MediaSettings.h"
 #include "TrafficMonitorMediaItem.h"
 #include <map>
+#include <mutex>
 #include <string>
 
 #define g_plugin CTrafficMonitorMedia::Instance()
@@ -26,20 +27,21 @@ public:
     virtual void OnInitialize(ITrafficMonitor* pApp) override;
     virtual void* GetPluginIcon() override;
 
-    void LoadConfig(const std::wstring& config_dir);
-    void SaveConfig() const;
     const CString& StringRes(UINT id);
     HICON GetIcon(UINT id);
     int DPI(int pixel);
+    [[nodiscard]] media::SettingData GetSettingsSnapshot() const;
     [[nodiscard]] std::wstring GetMediaDisplayText() const;
     [[nodiscard]] bool HasMediaTimeline() const;
     [[nodiscard]] double GetMediaProgressFraction() const;
     void RequestTogglePlayPause();
     void RequestSkipNext();
 
-    media::SettingData m_setting_data;
-
 private:
+    void LoadConfig(const std::wstring& config_dir);
+    void SaveConfig(const media::SettingData& settings) const;
+    void PublishSettings(const media::SettingData& settings);
+
     static CTrafficMonitorMedia m_instance;
     CTrafficMonitorMediaItem m_item;
     CMediaSessionService m_media_service;
@@ -48,6 +50,8 @@ private:
     std::map<UINT, CString> m_string_table;
     std::map<UINT, HICON> m_icons;
     ITrafficMonitor* m_app{};
+    mutable std::mutex m_settings_mutex;
+    media::SettingData m_setting_data;
 };
 
 #ifdef __cplusplus
