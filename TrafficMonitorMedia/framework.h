@@ -10,6 +10,7 @@
 #include <afxwin.h>         // MFC 核心组件和标准组件
 #include <afxext.h>         // MFC 扩展
 #include <afxdisp.h>        // MFC 自动化类
+#include <afxcmn.h>         // MFC 公共控件
 
 #ifdef _UNICODE
 #if defined _M_IX86

@@ -1,30 +1,40 @@
 #pragma once
-#include "TrafficMonitorMedia.h"
-
-// COptionsDlg 对话框
+#include "MediaSettings.h"
 
 class COptionsDlg : public CDialog
 {
     DECLARE_DYNAMIC(COptionsDlg)
 
 public:
-    COptionsDlg(CWnd* pParent = nullptr);   // 标准构造函数
-    virtual ~COptionsDlg();
+    explicit COptionsDlg(CWnd* pParent = nullptr);
+    ~COptionsDlg() override;
 
     media::SettingData m_data;
 
-    // 对话框数据
 #ifdef AFX_DESIGN_TIME
     enum { IDD = IDD_OPTIONS_DIALOG };
 #endif
 
-private:
-
 protected:
-    virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+    void DoDataExchange(CDataExchange* pDX) override;
+    BOOL OnInitDialog() override;
+    void OnOK() override;
 
     DECLARE_MESSAGE_MAP()
-public:
-    virtual BOOL OnInitDialog();
-    virtual void OnOK();
+
+private:
+    static void SelectAction(CComboBox& combo, media::MediaControlAction action);
+    static media::MediaControlAction ReadAction(
+        const CComboBox& combo,
+        media::MediaControlAction fallback);
+    void FillActionCombo(CComboBox& combo);
+
+    BOOL m_show_progress{ TRUE };
+    int m_max_title_width{ media::kDefaultMaxTitleWidth };
+    CSpinButtonCtrl m_max_title_width_spin;
+    CComboBox m_left_click_combo;
+    CComboBox m_left_double_click_combo;
+    CComboBox m_right_click_combo;
+    CComboBox m_wheel_up_combo;
+    CComboBox m_wheel_down_combo;
 };

@@ -13,98 +13,7 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// ����(���壬�й�) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
-LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
-#pragma code_page(65001)
-
-#ifdef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// TEXTINCLUDE
-//
-
-1 TEXTINCLUDE 
-BEGIN
-    "resource.h\0"
-END
-
-2 TEXTINCLUDE 
-BEGIN
-    "#include ""winres.h""\r\n"
-    "\0"
-END
-
-3 TEXTINCLUDE 
-BEGIN
-    "\r\n"
-    "\0"
-END
-
-#endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Dialog
-//
-
-IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 194, 135
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "����"
-FONT 9, "΢���ź�", 400, 0, 0x0
-BEGIN
-    DEFPUSHBUTTON   "ȷ��",IDOK,80,114,50,14
-    PUSHBUTTON      "ȡ��",IDCANCEL,137,114,50,14
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// DESIGNINFO
-//
-
-#ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO
-BEGIN
-    IDD_OPTIONS_DIALOG, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 187
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 128
-    END
-END
-#endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// AFX_DIALOG_LAYOUT
-//
-
-IDD_OPTIONS_DIALOG AFX_DIALOG_LAYOUT
-BEGIN
-    0,
-    100, 100, 0, 0,
-    100, 100, 0, 0
-END
-
-IDD_SELECT_CITY_DIALOG AFX_DIALOG_LAYOUT
-BEGIN
-    0,
-    100, 100, 0, 0,
-    100, 100, 0, 0,
-    0, 0, 100, 100,
-    0, 0, 0, 0
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Version
-//
+// Common resources
 
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION 1,0,0,0
@@ -127,7 +36,7 @@ BEGIN
             VALUE "FileDescription", "TrafficMonitorMedia Plugin for TrafficMonitor"
             VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "TrafficMonitorMedia.dll"
-            VALUE "LegalCopyright", "Copyright (C) 2021"
+            VALUE "LegalCopyright", "Copyright (C) TMP-media"
             VALUE "OriginalFilename", "TrafficMonitorMedia.dll"
             VALUE "ProductName", "TrafficMonitorMedia Plugin for TrafficMonitor"
             VALUE "ProductVersion", "1.0.0.0"
@@ -139,12 +48,6 @@ BEGIN
     END
 END
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_ICON1                       ICON                    "res\icon.ico"
@@ -155,49 +58,71 @@ IDI_STATUS_PAUSE_ON_LIGHT       ICON                    "res\status-pause-on-lig
 IDI_STATUS_NO_MEDIA_ON_DARK     ICON                    "res\status-no-media-on-dark.ico"
 IDI_STATUS_NO_MEDIA_ON_LIGHT    ICON                    "res\status-no-media-on-light.ico"
 
+/////////////////////////////////////////////////////////////////////////////
+// Chinese (Simplified, China) resources
 
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(65001)
+
+#ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
-// String Table
+// TEXTINCLUDE
 //
 
-STRINGTABLE
+1 TEXTINCLUDE
 BEGIN
-    IDS_PLUGIN_NAME         "TrafficMonitorMedia"
-    IDS_PLUGIN_DESCRIPTION  "在任务栏显示当前媒体标题"
-    IDS_PLUGIN_ITEM_NAME    "媒体标题"
+    "resource.h\0"
 END
 
-#endif    // ����(���壬�й�) resources
-/////////////////////////////////////////////////////////////////////////////
+2 TEXTINCLUDE
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
 
+3 TEXTINCLUDE
+BEGIN
+    "\r\n"
+    "\0"
+END
 
-/////////////////////////////////////////////////////////////////////////////
-// Ӣ��(����) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
+#endif    // APSTUDIO_INVOKED
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Dialog
 //
 
-IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 194, 135
+IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 330, 230
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Settings"
-FONT 9, "Segoe UI", 400, 0, 0x0
+CAPTION "媒体插件设置"
+FONT 9, "微软雅黑", 400, 0, 0x86
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,80,114,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,137,114,50,14
+    GROUPBOX        "显示",IDC_STATIC,7,7,316,48
+    CONTROL         "显示播放进度条",IDC_SHOW_PROGRESS_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,22,116,10
+    LTEXT           "标题最大宽度：",IDC_STATIC,166,22,68,10
+    EDITTEXT        IDC_MAX_TITLE_WIDTH_EDIT,237,19,55,15,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_MAX_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_ARROWKEYS,292,19,11,15
+    LTEXT           "逻辑像素",IDC_STATIC,274,38,39,9
+
+    GROUPBOX        "鼠标操作",IDC_STATIC,7,61,316,126
+    LTEXT           "左键单击：",IDC_STATIC,17,78,68,10
+    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,88,75,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "左键双击：",IDC_STATIC,17,101,68,10
+    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,88,98,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "右键单击：",IDC_STATIC,17,124,68,10
+    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,88,121,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "滚轮向上：",IDC_STATIC,193,78,55,10
+    COMBOBOX        IDC_WHEEL_UP_ACTION_COMBO,249,75,64,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "滚轮向下：",IDC_STATIC,193,101,55,10
+    COMBOBOX        IDC_WHEEL_DOWN_ACTION_COMBO,249,98,64,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "右键设为“无操作”时保留 TrafficMonitor 默认菜单。",IDC_STATIC,17,164,290,10
+
+    DEFPUSHBUTTON   "确定",IDOK,216,207,50,14
+    PUSHBUTTON      "取消",IDCANCEL,273,207,50,14
 END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// DESIGNINFO
-//
 
 #ifdef APSTUDIO_INVOKED
 GUIDELINES DESIGNINFO
@@ -205,48 +130,103 @@ BEGIN
     IDD_OPTIONS_DIALOG, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 187
+        RIGHTMARGIN, 323
         TOPMARGIN, 7
-        BOTTOMMARGIN, 128
+        BOTTOMMARGIN, 221
     END
 END
 #endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// AFX_DIALOG_LAYOUT
-//
 
 IDD_OPTIONS_DIALOG AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
 
+STRINGTABLE
+BEGIN
+    IDS_PLUGIN_NAME                 "TrafficMonitorMedia"
+    IDS_PLUGIN_DESCRIPTION          "在任务栏显示当前媒体标题"
+    IDS_PLUGIN_ITEM_NAME            "媒体标题"
+    IDS_ACTION_NONE                 "无操作"
+    IDS_ACTION_TOGGLE_PLAY_PAUSE    "播放/暂停"
+    IDS_ACTION_SKIP_NEXT            "下一首"
+END
+
+#endif    // Chinese (Simplified, China) resources
+/////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////
-//
-// String Table
-//
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 330, 230
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Media Plugin Settings"
+FONT 9, "Segoe UI", 400, 0, 0x0
+BEGIN
+    GROUPBOX        "Display",IDC_STATIC,7,7,316,48
+    CONTROL         "Show playback progress",IDC_SHOW_PROGRESS_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,22,116,10
+    LTEXT           "Maximum title width:",IDC_STATIC,153,22,81,10
+    EDITTEXT        IDC_MAX_TITLE_WIDTH_EDIT,237,19,55,15,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_MAX_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_ARROWKEYS,292,19,11,15
+    LTEXT           "logical pixels",IDC_STATIC,260,38,53,9
+
+    GROUPBOX        "Mouse Actions",IDC_STATIC,7,61,316,126
+    LTEXT           "Left click:",IDC_STATIC,17,78,68,10
+    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,88,75,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Left double-click:",IDC_STATIC,17,101,68,10
+    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,88,98,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Right click:",IDC_STATIC,17,124,68,10
+    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,88,121,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Wheel up:",IDC_STATIC,193,78,55,10
+    COMBOBOX        IDC_WHEEL_UP_ACTION_COMBO,249,75,64,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Wheel down:",IDC_STATIC,193,101,55,10
+    COMBOBOX        IDC_WHEEL_DOWN_ACTION_COMBO,249,98,64,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Right click keeps TrafficMonitor's default menu when set to None.",IDC_STATIC,17,164,290,10
+
+    DEFPUSHBUTTON   "OK",IDOK,216,207,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,273,207,50,14
+END
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_OPTIONS_DIALOG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 323
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 221
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+IDD_OPTIONS_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 STRINGTABLE
 BEGIN
-    IDS_PLUGIN_NAME         "TrafficMonitorMedia"
-    IDS_PLUGIN_DESCRIPTION  "Display the current media title in the taskbar"
-    IDS_PLUGIN_ITEM_NAME    "Media title"
+    IDS_PLUGIN_NAME                 "TrafficMonitorMedia"
+    IDS_PLUGIN_DESCRIPTION          "Display the current media title in the taskbar"
+    IDS_PLUGIN_ITEM_NAME            "Media title"
+    IDS_ACTION_NONE                 "None"
+    IDS_ACTION_TOGGLE_PLAY_PAUSE    "Play/Pause"
+    IDS_ACTION_SKIP_NEXT            "Next track"
 END
 
-#endif    // Ӣ��(����) resources
+#endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
-
-
 
 #ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
 // Generated from the TEXTINCLUDE 3 resource.
 //
-
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED

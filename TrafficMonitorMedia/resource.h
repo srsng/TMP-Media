@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ 生成的包含文件。
-// 供 TrafficMonitorMedia.rc 使用
+// Microsoft Visual C++ generated include file.
+// Used by TrafficMonitorMedia.rc
 //
 #define IDD_OPTIONS_DIALOG              102
 #define IDS_PLUGIN_NAME                 103
@@ -13,14 +13,26 @@
 #define IDI_STATUS_PAUSE_ON_LIGHT       109
 #define IDI_STATUS_NO_MEDIA_ON_DARK     110
 #define IDI_STATUS_NO_MEDIA_ON_LIGHT    111
+#define IDS_ACTION_NONE                 112
+#define IDS_ACTION_TOGGLE_PLAY_PAUSE    113
+#define IDS_ACTION_SKIP_NEXT            114
+
+#define IDC_SHOW_PROGRESS_CHECK         1000
+#define IDC_MAX_TITLE_WIDTH_EDIT        1001
+#define IDC_MAX_TITLE_WIDTH_SPIN        1002
+#define IDC_LEFT_CLICK_ACTION_COMBO     1003
+#define IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO 1004
+#define IDC_RIGHT_CLICK_ACTION_COMBO    1005
+#define IDC_WHEEL_UP_ACTION_COMBO       1006
+#define IDC_WHEEL_DOWN_ACTION_COMBO     1007
 
 // Next default values for new objects
-// 
+//
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        112
+#define _APS_NEXT_RESOURCE_VALUE        115
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1000
+#define _APS_NEXT_CONTROL_VALUE         1008
 #define _APS_NEXT_SYMED_VALUE           103
 #endif
 #endif
