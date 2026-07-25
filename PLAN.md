@@ -196,21 +196,16 @@ TMP-media/
 - 无媒体时显示占位文本。
 - 不导致 TrafficMonitor 卡顿。
 
-### Phase 4：P1 布局策略
+### Phase 4：P1 布局策略（已核查）
 
-研究 TrafficMonitor 插件接口能否控制插件整体位置。
+结论：当前 `PluginInterface.h` **不提供**任务栏窗口整体坐标、Windows 任务栏对齐方式或移动窗口的接口。
 
-风险点：
+- `IPluginItem` 仅提供自身最小宽度（`GetItemWidth` / `GetItemWidthEx`）、自绘区域（`DrawItem`）和鼠标事件（`OnMouseEvent`）。
+- `DrawItem` 收到的 `x/y/w/h` 是主程序已分配的插件区域；插件可以在其中绘制，但不能重排 TrafficMonitor 的显示项目或移动任务栏窗口。
+- `MF_TASKBAR_WND` / `KF_TASKBAR_WND` 只表明事件来自任务栏窗口，不携带 Windows 任务栏的靠左/居中对齐信息。
+- 已检查官方参考插件；未发现位置或对齐控制扩展接口。
 
-- 插件接口可能只允许控制显示项目宽度和自绘内容，未必能决定任务栏窗口整体位置。
-- 如果 TrafficMonitor 主程序没有暴露任务栏对齐信息或位置控制 API，插件只能在自身区域内绘制，不能移动到任务栏左侧 / 居中。
-
-处理方式：
-
-1. 先确认官方接口能力。
-2. 如果接口不支持，记录限制，不瞎写 Win32 hook。
-3. 只有在明确可行时再设计窗口定位方案。
-
+处理决定：不使用 Win32 hook 或修改 TrafficMonitor 进程。P1 的布局能力限定为：在主程序分配给本插件的区域内按内容自适应宽度、单行垂直居中并省略超长标题。用户提出的整体左侧/居中定位需要 TrafficMonitor 主程序未来提供官方 API 后才可实现。
 ### Phase 5：P2 进度与点击控制
 
 实现：
