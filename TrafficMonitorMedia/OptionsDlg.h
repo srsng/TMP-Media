@@ -36,6 +36,4 @@ private:
     CComboBox m_left_click_combo;
     CComboBox m_left_double_click_combo;
     CComboBox m_right_click_combo;
-    CComboBox m_wheel_up_combo;
-    CComboBox m_wheel_down_combo;
 };

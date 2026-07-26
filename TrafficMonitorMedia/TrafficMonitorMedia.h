@@ -31,6 +31,7 @@ public:
     int DPI(int pixel);
     [[nodiscard]] media::SettingData GetSettingsSnapshot() const;
     [[nodiscard]] MediaTitleSnapshot GetMediaSnapshot() const;
+    void RequestSwitchSession(media::SessionSwitchDirection direction);
     void RequestImmediateAction(media::MediaControlAction action);
     void RequestSingleClick(media::MediaControlAction action);
     void RequestDoubleClick(media::MediaControlAction action);

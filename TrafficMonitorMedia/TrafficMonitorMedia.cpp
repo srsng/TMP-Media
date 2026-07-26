@@ -364,6 +364,11 @@ MediaTitleSnapshot CTrafficMonitorMedia::GetMediaSnapshot() const
     return m_media_service.GetSnapshot();
 }
 
+void CTrafficMonitorMedia::RequestSwitchSession(media::SessionSwitchDirection direction)
+{
+    m_media_service.RequestSwitchSession(direction);
+}
+
 void CTrafficMonitorMedia::RequestImmediateAction(media::MediaControlAction action)
 {
     m_media_service.RequestImmediateAction(action);

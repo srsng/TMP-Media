@@ -1,8 +1,10 @@
 #pragma once
 
+#include "MediaSessionSelection.h"
 #include "MediaText.h"
 
 #include <chrono>
+#include <cstddef>
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
@@ -21,6 +23,7 @@ struct MediaTitleSnapshot
     std::wstring error_message;
     bool has_timeline{};
     double progress_fraction{};
+    bool can_switch_session{};
 };
 
 // 所有 GSMTC 调用都在内部工作线程完成。TrafficMonitor 的 UI 线程只能读取快照或提交请求。
@@ -36,6 +39,7 @@ public:
     void Start();
     void Stop();
     void RequestRefresh();
+    void RequestSwitchSession(media::SessionSwitchDirection direction);
     void RequestImmediateAction(media::MediaControlAction action);
     void RequestSingleClick(media::MediaControlAction action);
     void RequestDoubleClick(media::MediaControlAction action);
@@ -49,6 +53,7 @@ private:
     {
         bool stop{};
         bool refresh{};
+        std::optional<media::SessionSwitchDirection> switch_direction;
         media::MediaControlAction action{ media::MediaControlAction::None };
     };
 
@@ -68,6 +73,8 @@ private:
     std::mutex m_worker_mutex;
     std::condition_variable m_worker_cv;
     std::thread m_worker;
+    std::deque<media::SessionSwitchDirection> m_session_switch_requests;
+
     std::deque<media::MediaControlAction> m_control_actions;
     std::optional<PendingSingleClick> m_pending_single_click;
     std::chrono::steady_clock::time_point m_suppress_single_click_until{};

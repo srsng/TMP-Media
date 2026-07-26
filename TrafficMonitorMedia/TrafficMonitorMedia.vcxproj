@@ -254,6 +254,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="MediaSessionSelection.h" />
     <ClInclude Include="MediaSessionService.h" />
     <ClInclude Include="MediaSettings.h" />
     <ClInclude Include="MediaText.h" />

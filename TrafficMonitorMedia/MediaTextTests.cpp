@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "MediaText.h"
+#include "MediaSessionSelection.h"
+
+#include <array>
 
 // 纯文本选择逻辑不依赖 TrafficMonitor 或 GSMTC；这些编译期断言是自动回归检查。
 static_assert(media::SelectDisplayText(media::MediaTitleState::Loading, L"", L"") == media::kLoadingMediaText);
@@ -106,3 +109,85 @@ static_assert(media::ShouldScheduleSingleClick(MediaControlAction::SkipNext, fal
 static_assert(media::ShouldScheduleSingleClick(MediaControlAction::SkipPrevious, false));
 static_assert(!media::ShouldScheduleSingleClick(MediaControlAction::None, false));
 static_assert(!media::ShouldScheduleSingleClick(MediaControlAction::TogglePlayPause, true));
+constexpr std::array<media::SessionIdentity, 0> kNoSessions{};
+constexpr std::array<media::SessionIdentity, 3> kThreeSessions{ 11, 22, 33 };
+constexpr std::array<media::SessionIdentity, 1> kOneSession{ 11 };
+
+constexpr media::SessionSelection kNoSessionSelection = media::ResolveSessionSelection(
+    kNoSessions,
+    media::kNoSessionIdentity,
+    media::kNoSessionIdentity,
+    false);
+static_assert(kNoSessionSelection.selected_index == media::kNoSessionIndex);
+static_assert(!kNoSessionSelection.manual_selection);
+
+constexpr media::SessionSelection kFollowSystemSelection = media::ResolveSessionSelection(
+    kThreeSessions,
+    22,
+    33,
+    false);
+static_assert(kFollowSystemSelection.selected_index == 1);
+static_assert(!kFollowSystemSelection.manual_selection);
+
+constexpr media::SessionSelection kKeepManualSelection = media::ResolveSessionSelection(
+    kThreeSessions,
+    11,
+    33,
+    true);
+static_assert(kKeepManualSelection.selected_index == 2);
+static_assert(kKeepManualSelection.manual_selection);
+
+constexpr media::SessionSelection kFallbackToSystemSelection = media::ResolveSessionSelection(
+    kThreeSessions,
+    22,
+    44,
+    true);
+static_assert(kFallbackToSystemSelection.selected_index == 1);
+static_assert(!kFallbackToSystemSelection.manual_selection);
+
+constexpr media::SessionSelection kFallbackToFirstSelection = media::ResolveSessionSelection(
+    kThreeSessions,
+    44,
+    55,
+    true);
+static_assert(kFallbackToFirstSelection.selected_index == 0);
+static_assert(!kFallbackToFirstSelection.manual_selection);
+
+constexpr media::SessionSelection kNextSelection = media::SelectNextSession(
+    kThreeSessions,
+    11,
+    22,
+    true);
+static_assert(kNextSelection.selected_index == 2);
+static_assert(kNextSelection.manual_selection);
+
+constexpr media::SessionSelection kWrappedSelection = media::SelectNextSession(
+    kThreeSessions,
+    11,
+    33,
+    true);
+static_assert(kWrappedSelection.selected_index == 0);
+static_assert(kWrappedSelection.manual_selection);
+
+constexpr media::SessionSelection kPreviousSelection = media::SelectPreviousSession(
+    kThreeSessions,
+    11,
+    22,
+    true);
+static_assert(kPreviousSelection.selected_index == 0);
+static_assert(kPreviousSelection.manual_selection);
+
+constexpr media::SessionSelection kPreviousWrappedSelection = media::SelectPreviousSession(
+    kThreeSessions,
+    11,
+    11,
+    true);
+static_assert(kPreviousWrappedSelection.selected_index == 2);
+static_assert(kPreviousWrappedSelection.manual_selection);
+constexpr media::SessionSelection kSingleSelectionCannotSwitch = media::SelectNextSession(
+    kOneSession,
+    11,
+    11,
+    false);
+static_assert(kSingleSelectionCannotSwitch.selected_index == 0);
+static_assert(!kSingleSelectionCannotSwitch.manual_selection);

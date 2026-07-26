@@ -1,12 +1,15 @@
 #include "pch.h"
 #include "MediaSessionService.h"
+#include "MediaSessionSelection.h"
 
 #include <algorithm>
 #include <chrono>
 #include <exception>
 #include <utility>
+#include <vector>
 
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Media.Control.h>
 
 namespace
@@ -55,10 +58,107 @@ namespace
         return snapshot;
     }
 
-    MediaTitleSnapshot ReadCurrentSession(
+    std::vector<GlobalSystemMediaTransportControlsSession> GetSessions(
         const GlobalSystemMediaTransportControlsSessionManager& manager)
     {
-        const GlobalSystemMediaTransportControlsSession session = manager.GetCurrentSession();
+        const auto session_view = manager.GetSessions();
+        std::vector<GlobalSystemMediaTransportControlsSession> sessions;
+        sessions.reserve(session_view.Size());
+        for (const GlobalSystemMediaTransportControlsSession& session : session_view)
+        {
+            if (session)
+            {
+                sessions.push_back(session);
+            }
+        }
+        return sessions;
+    }
+
+    media::SessionIdentity GetSessionIdentity(
+        const GlobalSystemMediaTransportControlsSession& session)
+    {
+        if (!session)
+        {
+            return media::kNoSessionIdentity;
+        }
+
+        const auto unknown = session.as<winrt::Windows::Foundation::IUnknown>();
+        return reinterpret_cast<media::SessionIdentity>(winrt::get_abi(unknown));
+    }
+
+    struct ResolvedSession
+    {
+        GlobalSystemMediaTransportControlsSession session{ nullptr };
+        std::size_t count{};
+        bool manual_selection{};
+    };
+
+    ResolvedSession ResolveSession(
+        const GlobalSystemMediaTransportControlsSessionManager& manager,
+        const GlobalSystemMediaTransportControlsSession& selected_session,
+        bool manual_selection,
+        std::optional<media::SessionSwitchDirection> switch_direction)
+    {
+        const std::vector<GlobalSystemMediaTransportControlsSession> sessions = GetSessions(manager);
+        if (sessions.empty())
+        {
+            return {};
+        }
+
+        std::vector<media::SessionIdentity> identities;
+        identities.reserve(sessions.size());
+        for (const GlobalSystemMediaTransportControlsSession& session : sessions)
+        {
+            identities.push_back(GetSessionIdentity(session));
+        }
+
+        const GlobalSystemMediaTransportControlsSession system_current = manager.GetCurrentSession();
+        const std::span<const media::SessionIdentity> identity_span(identities);
+        const media::SessionIdentity system_identity = GetSessionIdentity(system_current);
+        const media::SessionIdentity selected_identity = GetSessionIdentity(selected_session);
+
+        media::SessionSelection selection;
+        if (!switch_direction)
+        {
+            selection = media::ResolveSessionSelection(
+                identity_span,
+                system_identity,
+                selected_identity,
+                manual_selection);
+        }
+        else if (*switch_direction == media::SessionSwitchDirection::Previous)
+        {
+            selection = media::SelectPreviousSession(
+                identity_span,
+                system_identity,
+                selected_identity,
+                manual_selection);
+        }
+        else
+        {
+            selection = media::SelectNextSession(
+                identity_span,
+                system_identity,
+                selected_identity,
+                manual_selection);
+        }
+
+        if (!selection.HasSelection())
+        {
+            return { .count = sessions.size() };
+        }
+
+        return {
+            .session = sessions[selection.selected_index],
+            .count = sessions.size(),
+            .manual_selection = selection.manual_selection,
+        };
+    }
+
+    MediaTitleSnapshot ReadSession(
+        const GlobalSystemMediaTransportControlsSession& session,
+        std::size_t session_count)
+    {
         if (!session)
         {
             return MakeNoSessionSnapshot();
@@ -66,6 +166,7 @@ namespace
 
         MediaTitleSnapshot snapshot;
         snapshot.state = media::MediaTitleState::Ready;
+        snapshot.can_switch_session = session_count > 1;
         snapshot.source_app_id = ToWString(session.SourceAppUserModelId());
 
         const auto playback_info = session.GetPlaybackInfo();
@@ -94,10 +195,9 @@ namespace
     }
 
     void ExecuteControlAction(
-        const GlobalSystemMediaTransportControlsSessionManager& manager,
+        const GlobalSystemMediaTransportControlsSession& session,
         media::MediaControlAction action)
     {
-        const GlobalSystemMediaTransportControlsSession session = manager.GetCurrentSession();
         if (!session)
         {
             return;
@@ -136,6 +236,7 @@ void CMediaSessionService::Start()
 
     m_stop_requested = false;
     m_refresh_requested = true;
+    m_session_switch_requests.clear();
     m_control_actions.clear();
     m_pending_single_click.reset();
     m_suppress_single_click_until = {};
@@ -153,6 +254,7 @@ void CMediaSessionService::Stop()
         }
         m_stop_requested = true;
         m_refresh_requested = true;
+        m_session_switch_requests.clear();
         m_control_actions.clear();
         m_pending_single_click.reset();
     }
@@ -176,6 +278,19 @@ void CMediaSessionService::RequestRefresh()
             return;
         }
         m_refresh_requested = true;
+    }
+    m_worker_cv.notify_one();
+}
+
+void CMediaSessionService::RequestSwitchSession(media::SessionSwitchDirection direction)
+{
+    {
+        std::lock_guard<std::mutex> lock(m_worker_mutex);
+        if (!m_started)
+        {
+            return;
+        }
+        m_session_switch_requests.push_back(direction);
     }
     m_worker_cv.notify_one();
 }
@@ -283,6 +398,8 @@ void CMediaSessionService::WorkerLoop()
     {
         winrt::init_apartment(winrt::apartment_type::multi_threaded);
         GlobalSystemMediaTransportControlsSessionManager manager{ nullptr };
+        GlobalSystemMediaTransportControlsSession selected_session{ nullptr };
+        bool manual_selection{};
         auto next_periodic_refresh = std::chrono::steady_clock::now();
 
         while (true)
@@ -300,19 +417,31 @@ void CMediaSessionService::WorkerLoop()
                     manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
                 }
 
+                const ResolvedSession resolved = ResolveSession(
+                    manager,
+                    selected_session,
+                    manual_selection,
+                    request.switch_direction);
+                selected_session = resolved.session;
+                manual_selection = resolved.manual_selection;
+
                 if (request.action != media::MediaControlAction::None)
                 {
-                    ExecuteControlAction(manager, request.action);
+                    ExecuteControlAction(selected_session, request.action);
                 }
-                if (request.refresh || request.action != media::MediaControlAction::None)
+                if (request.refresh
+                    || request.switch_direction.has_value()
+                    || request.action != media::MediaControlAction::None)
                 {
-                    Publish(ReadCurrentSession(manager));
+                    Publish(ReadSession(selected_session, resolved.count));
                     next_periodic_refresh = std::chrono::steady_clock::now() + kRefreshInterval;
                 }
             }
             catch (const winrt::hresult_error& error)
             {
                 manager = nullptr;
+                selected_session = nullptr;
+                manual_selection = false;
                 Publish(MakeErrorSnapshot(ToWString(error.message())));
                 next_periodic_refresh = std::chrono::steady_clock::now() + kRefreshInterval;
             }
@@ -327,7 +456,6 @@ void CMediaSessionService::WorkerLoop()
         Publish(MakeErrorSnapshot(L"媒体服务发生意外错误"));
     }
 }
-
 CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
     std::chrono::steady_clock::time_point next_periodic_refresh)
 {
@@ -338,6 +466,14 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
         if (m_stop_requested)
         {
             return { .stop = true };
+        }
+
+        if (!m_session_switch_requests.empty())
+        {
+            const media::SessionSwitchDirection direction = m_session_switch_requests.front();
+            m_session_switch_requests.pop_front();
+            m_refresh_requested = false;
+            return { .switch_direction = direction };
         }
 
         const auto now = std::chrono::steady_clock::now();

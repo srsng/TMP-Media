@@ -24,8 +24,6 @@ void COptionsDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_LEFT_CLICK_ACTION_COMBO, m_left_click_combo);
     DDX_Control(pDX, IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO, m_left_double_click_combo);
     DDX_Control(pDX, IDC_RIGHT_CLICK_ACTION_COMBO, m_right_click_combo);
-    DDX_Control(pDX, IDC_WHEEL_UP_ACTION_COMBO, m_wheel_up_combo);
-    DDX_Control(pDX, IDC_WHEEL_DOWN_ACTION_COMBO, m_wheel_down_combo);
 }
 
 BEGIN_MESSAGE_MAP(COptionsDlg, CDialog)
@@ -47,14 +45,10 @@ BOOL COptionsDlg::OnInitDialog()
     FillActionCombo(m_left_click_combo);
     FillActionCombo(m_left_double_click_combo);
     FillActionCombo(m_right_click_combo);
-    FillActionCombo(m_wheel_up_combo);
-    FillActionCombo(m_wheel_down_combo);
 
     SelectAction(m_left_click_combo, m_data.input.left_click);
     SelectAction(m_left_double_click_combo, m_data.input.left_double_click);
     SelectAction(m_right_click_combo, m_data.input.right_click);
-    SelectAction(m_wheel_up_combo, m_data.input.wheel_up);
-    SelectAction(m_wheel_down_combo, m_data.input.wheel_down);
 
     return TRUE;
 }
@@ -75,8 +69,6 @@ void COptionsDlg::OnOK()
         m_left_double_click_combo,
         updated.input.left_double_click);
     updated.input.right_click = ReadAction(m_right_click_combo, updated.input.right_click);
-    updated.input.wheel_up = ReadAction(m_wheel_up_combo, updated.input.wheel_up);
-    updated.input.wheel_down = ReadAction(m_wheel_down_combo, updated.input.wheel_down);
     m_data = media::NormalizeSettings(updated);
 
     CDialog::OnOK();

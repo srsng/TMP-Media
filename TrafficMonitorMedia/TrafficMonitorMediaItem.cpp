@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace
 {
@@ -29,6 +30,7 @@ namespace
             return dark_mode ? IDI_STATUS_NO_MEDIA_ON_DARK : IDI_STATUS_NO_MEDIA_ON_LIGHT;
         }
     }
+
 }
 
 const wchar_t* CTrafficMonitorMediaItem::GetItemName() const
@@ -101,6 +103,7 @@ int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
         requested_text_width,
         minimum_text_width,
         maximum_text_width);
+
     return text_width
         + g_plugin.DPI(kStatusIconSize96Dpi)
         + g_plugin.DPI(kStatusIconGap96Dpi);
@@ -158,49 +161,56 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
     const std::wstring primary(lines.primary);
     const std::wstring secondary(lines.secondary);
     const int text_x = x + padding + icon_size + icon_gap;
-    const int text_width = (std::max)(0, w - padding * 2 - icon_size - icon_gap);
+    const int text_width = (std::max)(
+        0,
+        w - padding * 2 - icon_size - icon_gap);
     CRect text_rect(CPoint(text_x, y), CSize(text_width, content_height));
 
-    const COLORREF old_text_color = pDC->SetTextColor(dark_mode ? RGB(245, 245, 245) : RGB(32, 32, 32));
+    const COLORREF text_color = dark_mode ? RGB(245, 245, 245) : RGB(32, 32, 32);
+    const COLORREF old_text_color = pDC->SetTextColor(text_color);
     const int old_background_mode = pDC->SetBkMode(TRANSPARENT);
-    if (lines.split_lines)
+    if (text_width > 0 && content_height > 0)
     {
-        const int first_line_height = content_height / 2;
-        CRect primary_rect(text_rect);
-        primary_rect.bottom = primary_rect.top + first_line_height;
-        CRect secondary_rect(text_rect);
-        secondary_rect.top = primary_rect.bottom;
-        pDC->DrawText(
-            primary.c_str(),
-            primary_rect,
-            DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
-        pDC->DrawText(
-            secondary.c_str(),
-            secondary_rect,
-            DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+        if (lines.split_lines)
+        {
+            const int first_line_height = content_height / 2;
+            CRect primary_rect(text_rect);
+            primary_rect.bottom = primary_rect.top + first_line_height;
+            CRect secondary_rect(text_rect);
+            secondary_rect.top = primary_rect.bottom;
+            pDC->DrawText(
+                primary.c_str(),
+                primary_rect,
+                DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+            pDC->DrawText(
+                secondary.c_str(),
+                secondary_rect,
+                DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS | DT_NOPREFIX);
+        }
+        else
+        {
+            TEXTMETRIC text_metrics{};
+            const int line_height = pDC->GetTextMetrics(&text_metrics)
+                ? text_metrics.tmHeight
+                : content_height;
+            const int maximum_text_height = media::CalculateTwoLineTextHeight(
+                content_height,
+                line_height);
+            CRect measured_rect(0, 0, text_width, 0);
+            pDC->DrawText(
+                primary.c_str(),
+                measured_rect,
+                DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
+            const int drawn_text_height = (std::min)(maximum_text_height, measured_rect.Height());
+            text_rect.top += (content_height - drawn_text_height) / 2;
+            text_rect.bottom = text_rect.top + drawn_text_height;
+            pDC->DrawText(
+                primary.c_str(),
+                text_rect,
+                DT_WORDBREAK | DT_EDITCONTROL | DT_END_ELLIPSIS | DT_NOPREFIX);
+        }
     }
-    else
-    {
-        TEXTMETRIC text_metrics{};
-        const int line_height = pDC->GetTextMetrics(&text_metrics)
-            ? text_metrics.tmHeight
-            : content_height;
-        const int maximum_text_height = media::CalculateTwoLineTextHeight(
-            content_height,
-            line_height);
-        CRect measured_rect(0, 0, text_width, 0);
-        pDC->DrawText(
-            primary.c_str(),
-            measured_rect,
-            DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
-        const int drawn_text_height = (std::min)(maximum_text_height, measured_rect.Height());
-        text_rect.top += (content_height - drawn_text_height) / 2;
-        text_rect.bottom = text_rect.top + drawn_text_height;
-        pDC->DrawText(
-            primary.c_str(),
-            text_rect,
-            DT_WORDBREAK | DT_EDITCONTROL | DT_END_ELLIPSIS | DT_NOPREFIX);
-    }
+
     pDC->SetBkMode(old_background_mode);
     pDC->SetTextColor(old_text_color);
 
@@ -231,6 +241,21 @@ int CTrafficMonitorMediaItem::OnMouseEvent(
         return 0;
     }
 
+    const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
+    if (type == MT_WHEEL_UP || type == MT_WHEEL_DOWN)
+    {
+        if (!snapshot.can_switch_session)
+        {
+            return 0;
+        }
+
+        const media::SessionSwitchDirection direction = type == MT_WHEEL_UP
+            ? media::SessionSwitchDirection::Previous
+            : media::SessionSwitchDirection::Next;
+        g_plugin.RequestSwitchSession(direction);
+        return 1;
+    }
+
     const media::SettingData settings = g_plugin.GetSettingsSnapshot();
     media::MediaControlAction action = media::MediaControlAction::None;
 
@@ -249,14 +274,6 @@ int CTrafficMonitorMediaItem::OnMouseEvent(
             : 0;
     case MT_RCLICKED:
         action = settings.input.right_click;
-        g_plugin.RequestImmediateAction(action);
-        return action != media::MediaControlAction::None ? 1 : 0;
-    case MT_WHEEL_UP:
-        action = settings.input.wheel_up;
-        g_plugin.RequestImmediateAction(action);
-        return action != media::MediaControlAction::None ? 1 : 0;
-    case MT_WHEEL_DOWN:
-        action = settings.input.wheel_down;
         g_plugin.RequestImmediateAction(action);
         return action != media::MediaControlAction::None ? 1 : 0;
     default:
