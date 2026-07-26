@@ -192,9 +192,9 @@ const wchar_t* CTrafficMonitorMedia::GetInfo(PluginInfoIndex index)
     case TMI_COPYRIGHT:
         return L"Copyright (C) TMP-media";
     case TMI_URL:
-        return L"https://github.com/zhongyang219/TrafficMonitor";
+        return L"https://github.com/srsng/TMP-media";
     case TMI_VERSION:
-        return L"0.1.0";
+        return L"1.0.0";
     default:
         return L"";
     }
@@ -224,6 +224,11 @@ void CTrafficMonitorMedia::LoadConfig(const std::wstring& config_dir)
             kDisplaySection,
             L"show_progress",
             settings.show_progress);
+        settings.show_status_icon = ReadProfileBool(
+            m_config_path,
+            kDisplaySection,
+            L"show_status_icon",
+            settings.show_status_icon);
         settings.show_artist_on_second_line = ReadProfileBool(
             m_config_path,
             kDisplaySection,
@@ -272,6 +277,11 @@ void CTrafficMonitorMedia::SaveConfig(const media::SettingData& settings) const
         kDisplaySection,
         L"show_progress",
         normalized.show_progress ? L"1" : L"0");
+    WriteProfileValue(
+        m_config_path,
+        kDisplaySection,
+        L"show_status_icon",
+        normalized.show_status_icon ? L"1" : L"0");
     WriteProfileValue(
         m_config_path,
         kDisplaySection,

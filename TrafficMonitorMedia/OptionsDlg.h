@@ -30,6 +30,7 @@ private:
     void FillActionCombo(CComboBox& combo);
 
     BOOL m_show_progress{ TRUE };
+    BOOL m_show_status_icon{ TRUE };
     BOOL m_show_artist_on_second_line{ TRUE };
     int m_max_title_width{ media::kDefaultMaxTitleWidth };
     CSpinButtonCtrl m_max_title_width_spin;

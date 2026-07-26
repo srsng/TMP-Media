@@ -30,6 +30,7 @@ namespace media
     struct SettingData
     {
         bool show_progress{ true };
+        bool show_status_icon{ true };
         bool show_artist_on_second_line{ true };
         int max_title_width{ kDefaultMaxTitleWidth };
         InputBindings input{};

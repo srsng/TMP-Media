@@ -70,14 +70,17 @@ int CTrafficMonitorMediaItem::IsDoubleLineExclusive() const
 
 int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
 {
+    const media::SettingData settings = g_plugin.GetSettingsSnapshot();
+    const int status_icon_width = settings.show_status_icon
+        ? g_plugin.DPI(kStatusIconSize96Dpi + kStatusIconGap96Dpi)
+        : 0;
+
     CDC* pDC = CDC::FromHandle(static_cast<HDC>(hDC));
     if (pDC == nullptr)
     {
-        return g_plugin.DPI(
-            kMinimumWidth96Dpi + kStatusIconSize96Dpi + kStatusIconGap96Dpi);
+        return g_plugin.DPI(kMinimumWidth96Dpi) + status_icon_width;
     }
 
-    const media::SettingData settings = g_plugin.GetSettingsSnapshot();
     const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
     const media::TitleLineLayout lines = media::SelectTitleLineLayout(
         snapshot.state,
@@ -104,9 +107,7 @@ int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
         minimum_text_width,
         maximum_text_width);
 
-    return text_width
-        + g_plugin.DPI(kStatusIconSize96Dpi)
-        + g_plugin.DPI(kStatusIconGap96Dpi);
+    return text_width + status_icon_width;
 }
 
 void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, bool dark_mode)
@@ -121,8 +122,12 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
     const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
     const bool show_timeline = settings.show_progress && snapshot.has_timeline;
     const int padding = g_plugin.DPI(kHorizontalPadding96Dpi);
-    const int icon_size = g_plugin.DPI(kStatusIconSize96Dpi);
-    const int icon_gap = g_plugin.DPI(kStatusIconGap96Dpi);
+    const int icon_size = settings.show_status_icon
+        ? g_plugin.DPI(kStatusIconSize96Dpi)
+        : 0;
+    const int icon_gap = settings.show_status_icon
+        ? g_plugin.DPI(kStatusIconGap96Dpi)
+        : 0;
     const int progress_height = show_timeline
         ? (std::max)(1, g_plugin.DPI(kProgressHeight96Dpi))
         : 0;
@@ -131,25 +136,28 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
         : 0;
     const int content_height = (std::max)(0, h - progress_height - progress_gap);
 
-    const media::MediaStatusIcon status_icon = media::SelectMediaStatusIcon(
-        snapshot.state,
-        snapshot.playback_state);
-    const HICON icon = g_plugin.GetIcon(SelectStatusIconResource(status_icon, dark_mode));
-    const int drawn_icon_size = (std::min)(icon_size, content_height);
-    if (icon != nullptr && drawn_icon_size > 0)
+    if (settings.show_status_icon)
     {
-        const int icon_x = x + padding + ((icon_size - drawn_icon_size) / 2);
-        const int icon_y = y + ((content_height - drawn_icon_size) / 2);
-        DrawIconEx(
-            pDC->GetSafeHdc(),
-            icon_x,
-            icon_y,
-            icon,
-            drawn_icon_size,
-            drawn_icon_size,
-            0,
-            nullptr,
-            DI_NORMAL);
+        const media::MediaStatusIcon status_icon = media::SelectMediaStatusIcon(
+            snapshot.state,
+            snapshot.playback_state);
+        const HICON icon = g_plugin.GetIcon(SelectStatusIconResource(status_icon, dark_mode));
+        const int drawn_icon_size = (std::min)(icon_size, content_height);
+        if (icon != nullptr && drawn_icon_size > 0)
+        {
+            const int icon_x = x + padding + ((icon_size - drawn_icon_size) / 2);
+            const int icon_y = y + ((content_height - drawn_icon_size) / 2);
+            DrawIconEx(
+                pDC->GetSafeHdc(),
+                icon_x,
+                icon_y,
+                icon,
+                drawn_icon_size,
+                drawn_icon_size,
+                0,
+                nullptr,
+                DI_NORMAL);
+        }
     }
 
     const media::TitleLineLayout lines = media::SelectTitleLineLayout(

@@ -25,6 +25,7 @@
 #define IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO 1004
 #define IDC_RIGHT_CLICK_ACTION_COMBO    1005
 #define IDC_SHOW_ARTIST_SECOND_LINE_CHECK  1008
+#define IDC_SHOW_STATUS_ICON_CHECK      1009
 
 // Next default values for new objects
 //
@@ -32,7 +33,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        116
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1009
+#define _APS_NEXT_CONTROL_VALUE         1010
 #define _APS_NEXT_SYMED_VALUE           103
 #endif
 #endif
