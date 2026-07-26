@@ -35,7 +35,3 @@ obj/
 
 # Per-project Visual C++ intermediate directory
 TrafficMonitorMedia/TrafficM.*/
-
-# Local developer command configuration
-justfile
-
