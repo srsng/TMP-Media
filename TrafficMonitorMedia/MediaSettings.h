@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <string_view>
 
@@ -32,6 +32,8 @@ namespace media
         bool show_progress{ true };
         bool show_status_icon{ true };
         bool show_artist_on_second_line{ true };
+        bool show_cover_background{ false };
+        bool smooth_cover_scaling{ true };
         int max_title_width{ kDefaultMaxTitleWidth };
         InputBindings input{};
 

@@ -19,6 +19,21 @@ namespace
     using winrt::Windows::Media::Control::GlobalSystemMediaTransportControlsSessionPlaybackStatus;
 
     constexpr auto kRefreshInterval = std::chrono::seconds(1);
+    constexpr auto kCoverRetryInterval = std::chrono::seconds(10);
+
+    struct CoverCache
+    {
+        std::wstring key;
+        std::shared_ptr<const media::MediaCoverImage> image;
+        std::chrono::steady_clock::time_point retry_after{};
+
+        void Clear()
+        {
+            key.clear();
+            image.reset();
+            retry_after = {};
+        }
+    };
 
     std::wstring ToWString(const winrt::hstring& value)
     {
@@ -155,12 +170,33 @@ namespace
         };
     }
 
+    std::wstring MakeCoverKey(
+        std::wstring_view source_app_id,
+        std::wstring_view title,
+        std::wstring_view artist,
+        std::wstring_view album_title)
+    {
+        std::wstring key;
+        key.reserve(source_app_id.size() + title.size() + artist.size() + album_title.size() + 4);
+        key.append(source_app_id);
+        key.push_back(L'\x1f');
+        key.append(title);
+        key.push_back(L'\x1f');
+        key.append(artist);
+        key.push_back(L'\x1f');
+        key.append(album_title);
+        return key;
+    }
+
     MediaTitleSnapshot ReadSession(
         const GlobalSystemMediaTransportControlsSession& session,
-        std::size_t session_count)
+        std::size_t session_count,
+        bool cover_background_enabled,
+        CoverCache& cover_cache)
     {
         if (!session)
         {
+            cover_cache.Clear();
             return MakeNoSessionSnapshot();
         }
 
@@ -180,6 +216,57 @@ namespace
         {
             snapshot.title = ToWString(properties.Title());
             snapshot.artist = ToWString(properties.Artist());
+
+            if (cover_background_enabled)
+            {
+                std::wstring album_title;
+                try
+                {
+                    album_title = ToWString(properties.AlbumTitle());
+                }
+                catch (...)
+                {
+                    // 专辑字段不是封面显示的必要条件，读取失败时继续使用其他媒体字段作为缓存键。
+                }
+
+                const std::wstring cover_key = MakeCoverKey(
+                    snapshot.source_app_id,
+                    snapshot.title,
+                    snapshot.artist,
+                    album_title);
+                const auto now = std::chrono::steady_clock::now();
+                const bool media_changed = cover_cache.key != cover_key;
+                if (media_changed)
+                {
+                    cover_cache.key = cover_key;
+                    cover_cache.image.reset();
+                    cover_cache.retry_after = {};
+                }
+
+                if (!cover_cache.image && now >= cover_cache.retry_after)
+                {
+                    try
+                    {
+                        cover_cache.image = media::DecodeMediaCover(properties.Thumbnail());
+                    }
+                    catch (...)
+                    {
+                        cover_cache.image.reset();
+                    }
+                    cover_cache.retry_after = cover_cache.image
+                        ? std::chrono::steady_clock::time_point{}
+                        : now + kCoverRetryInterval;
+                }
+                snapshot.cover = cover_cache.image;
+            }
+            else
+            {
+                cover_cache.Clear();
+            }
+        }
+        else
+        {
+            cover_cache.Clear();
         }
 
         const auto timeline = session.GetTimelineProperties();
@@ -277,6 +364,20 @@ void CMediaSessionService::RequestRefresh()
         {
             return;
         }
+        m_refresh_requested = true;
+    }
+    m_worker_cv.notify_one();
+}
+
+void CMediaSessionService::SetCoverBackgroundEnabled(bool enabled)
+{
+    {
+        std::lock_guard<std::mutex> lock(m_worker_mutex);
+        if (m_cover_background_enabled == enabled)
+        {
+            return;
+        }
+        m_cover_background_enabled = enabled;
         m_refresh_requested = true;
     }
     m_worker_cv.notify_one();
@@ -400,6 +501,7 @@ void CMediaSessionService::WorkerLoop()
         GlobalSystemMediaTransportControlsSessionManager manager{ nullptr };
         GlobalSystemMediaTransportControlsSession selected_session{ nullptr };
         bool manual_selection{};
+        CoverCache cover_cache;
         auto next_periodic_refresh = std::chrono::steady_clock::now();
 
         while (true)
@@ -433,7 +535,11 @@ void CMediaSessionService::WorkerLoop()
                     || request.switch_direction.has_value()
                     || request.action != media::MediaControlAction::None)
                 {
-                    Publish(ReadSession(selected_session, resolved.count));
+                    Publish(ReadSession(
+                        selected_session,
+                        resolved.count,
+                        request.cover_background_enabled,
+                        cover_cache));
                     next_periodic_refresh = std::chrono::steady_clock::now() + kRefreshInterval;
                 }
             }
@@ -442,6 +548,7 @@ void CMediaSessionService::WorkerLoop()
                 manager = nullptr;
                 selected_session = nullptr;
                 manual_selection = false;
+                cover_cache.Clear();
                 Publish(MakeErrorSnapshot(ToWString(error.message())));
                 next_periodic_refresh = std::chrono::steady_clock::now() + kRefreshInterval;
             }
@@ -465,7 +572,7 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
     {
         if (m_stop_requested)
         {
-            return { .stop = true };
+            return { .stop = true, .cover_background_enabled = m_cover_background_enabled };
         }
 
         if (!m_session_switch_requests.empty())
@@ -473,7 +580,7 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
             const media::SessionSwitchDirection direction = m_session_switch_requests.front();
             m_session_switch_requests.pop_front();
             m_refresh_requested = false;
-            return { .switch_direction = direction };
+            return { .switch_direction = direction, .cover_background_enabled = m_cover_background_enabled };
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -495,18 +602,18 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
         if (has_queued_action)
         {
             m_control_actions.pop_front();
-            return { .action = action };
+            return { .action = action, .cover_background_enabled = m_cover_background_enabled };
         }
         if (has_matured_single_click)
         {
             m_pending_single_click.reset();
-            return { .action = action };
+            return { .action = action, .cover_background_enabled = m_cover_background_enabled };
         }
 
         if (m_refresh_requested || now >= next_periodic_refresh)
         {
             m_refresh_requested = false;
-            return { .refresh = true };
+            return { .refresh = true, .cover_background_enabled = m_cover_background_enabled };
         }
 
         auto wake_time = next_periodic_refresh;

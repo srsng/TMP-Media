@@ -1,4 +1,4 @@
-// Microsoft Visual C++ generated resource script.
+﻿// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 
@@ -16,8 +16,8 @@
 // Common resources
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,0
- PRODUCTVERSION 1,0,0,0
+ FILEVERSION 1,0,1,0
+ PRODUCTVERSION 1,0,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -34,12 +34,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "TMP-media"
             VALUE "FileDescription", "TrafficMonitorMedia Plugin for TrafficMonitor"
-            VALUE "FileVersion", "1.0.0.0"
+            VALUE "FileVersion", "1.0.1.0"
             VALUE "InternalName", "TrafficMonitorMedia.dll"
             VALUE "LegalCopyright", "Copyright (C) TMP-media"
             VALUE "OriginalFilename", "TrafficMonitorMedia.dll"
             VALUE "ProductName", "TrafficMonitorMedia Plugin for TrafficMonitor"
-            VALUE "ProductVersion", "1.0.0.0"
+            VALUE "ProductVersion", "1.0.1.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -95,32 +95,34 @@ END
 // Dialog
 //
 
-IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 330, 230
+IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 330, 246
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "媒体插件设置"
 FONT 9, "微软雅黑", 400, 0, 0x86
 BEGIN
-    GROUPBOX        "显示",IDC_STATIC,7,7,316,48
+    GROUPBOX        "显示",IDC_STATIC,7,7,316,62
     CONTROL         "显示播放进度条",IDC_SHOW_PROGRESS_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,22,116,10
     CONTROL         "第二行显示艺术家",IDC_SHOW_ARTIST_SECOND_LINE_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,39,130,10
     CONTROL         "显示状态图标",IDC_SHOW_STATUS_ICON_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,166,39,80,10
+    CONTROL         "显示媒体封面背景",IDC_SHOW_COVER_BACKGROUND_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,53,116,10
+    CONTROL         "平滑缩放媒体封面",IDC_SMOOTH_COVER_SCALING_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,166,53,120,10
     LTEXT           "标题最大宽度：",IDC_STATIC,166,22,68,10
     EDITTEXT        IDC_MAX_TITLE_WIDTH_EDIT,237,19,55,15,ES_AUTOHSCROLL | ES_NUMBER
     CONTROL         "",IDC_MAX_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_ARROWKEYS,292,19,11,15
     LTEXT           "逻辑像素",IDC_STATIC,274,38,39,9
 
-    GROUPBOX        "鼠标操作",IDC_STATIC,7,61,316,126
-    LTEXT           "左键单击：",IDC_STATIC,17,78,68,10
-    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,88,75,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "左键双击：",IDC_STATIC,17,101,68,10
-    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,88,98,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "右键单击：",IDC_STATIC,17,124,68,10
-    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,88,121,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "滚轮向上/向下固定切换上一/下一媒体会话。",IDC_STATIC,193,78,120,24
-    LTEXT           "右键设为“无操作”时保留 TrafficMonitor 默认菜单。",IDC_STATIC,17,164,290,10
+    GROUPBOX        "鼠标操作",IDC_STATIC,7,75,316,126
+    LTEXT           "左键单击：",IDC_STATIC,17,92,68,10
+    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,88,89,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "左键双击：",IDC_STATIC,17,115,68,10
+    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,88,112,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "右键单击：",IDC_STATIC,17,138,68,10
+    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,88,135,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "滚轮向上/向下固定切换上一/下一媒体会话。",IDC_STATIC,193,92,120,24
+    LTEXT           "右键设为“无操作”时保留 TrafficMonitor 默认菜单。",IDC_STATIC,17,178,290,10
 
-    DEFPUSHBUTTON   "确定",IDOK,216,207,50,14
-    PUSHBUTTON      "取消",IDCANCEL,273,207,50,14
+    DEFPUSHBUTTON   "确定",IDOK,216,221,50,14
+    PUSHBUTTON      "取消",IDCANCEL,273,221,50,14
 END
 
 #ifdef APSTUDIO_INVOKED
@@ -131,7 +133,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 323
         TOPMARGIN, 7
-        BOTTOMMARGIN, 221
+        BOTTOMMARGIN, 237
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -144,7 +146,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_PLUGIN_NAME                 "TrafficMonitorMedia"
-    IDS_PLUGIN_DESCRIPTION          "在任务栏显示当前媒体标题"
+    IDS_PLUGIN_DESCRIPTION          "在TM任务栏窗口显示当前媒体标题、进度等信息，并允许单击、双击信息来控制播放、暂停等功能"
     IDS_PLUGIN_ITEM_NAME            "媒体标题"
     IDS_ACTION_NONE                 "无操作"
     IDS_ACTION_TOGGLE_PLAY_PAUSE    "播放/暂停"
@@ -162,32 +164,34 @@ END
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 #pragma code_page(1252)
 
-IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 330, 230
+IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 330, 246
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Media Plugin Settings"
 FONT 9, "Segoe UI", 400, 0, 0x0
 BEGIN
-    GROUPBOX        "Display",IDC_STATIC,7,7,316,48
+    GROUPBOX        "Display",IDC_STATIC,7,7,316,62
     CONTROL         "Show playback progress",IDC_SHOW_PROGRESS_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,22,116,10
     CONTROL         "Show artist on second line",IDC_SHOW_ARTIST_SECOND_LINE_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,39,130,10
     CONTROL         "Show status icon",IDC_SHOW_STATUS_ICON_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,153,39,95,10
+    CONTROL         "Show media cover background",IDC_SHOW_COVER_BACKGROUND_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,53,150,10
+    CONTROL         "Smooth cover scaling",IDC_SMOOTH_COVER_SCALING_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,175,53,130,10
     LTEXT           "Maximum title width:",IDC_STATIC,153,22,81,10
     EDITTEXT        IDC_MAX_TITLE_WIDTH_EDIT,237,19,55,15,ES_AUTOHSCROLL | ES_NUMBER
     CONTROL         "",IDC_MAX_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_ARROWKEYS,292,19,11,15
     LTEXT           "logical pixels",IDC_STATIC,260,38,53,9
 
-    GROUPBOX        "Mouse Actions",IDC_STATIC,7,61,316,126
-    LTEXT           "Left click:",IDC_STATIC,17,78,68,10
-    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,88,75,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Left double-click:",IDC_STATIC,17,101,68,10
-    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,88,98,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Right click:",IDC_STATIC,17,124,68,10
-    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,88,121,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Wheel up/down switches to the previous/next media session.",IDC_STATIC,193,78,120,24
-    LTEXT           "Right click keeps TrafficMonitor's default menu when set to None.",IDC_STATIC,17,164,290,10
+    GROUPBOX        "Mouse Actions",IDC_STATIC,7,75,316,126
+    LTEXT           "Left click:",IDC_STATIC,17,92,68,10
+    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,88,89,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Left double-click:",IDC_STATIC,17,115,68,10
+    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,88,112,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Right click:",IDC_STATIC,17,138,68,10
+    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,88,135,95,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Wheel up/down switches to the previous/next media session.",IDC_STATIC,193,92,120,24
+    LTEXT           "Right click keeps TrafficMonitor's default menu when set to None.",IDC_STATIC,17,178,290,10
 
-    DEFPUSHBUTTON   "OK",IDOK,216,207,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,273,207,50,14
+    DEFPUSHBUTTON   "OK",IDOK,216,221,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,273,221,50,14
 END
 
 #ifdef APSTUDIO_INVOKED
@@ -198,7 +202,7 @@ BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 323
         TOPMARGIN, 7
-        BOTTOMMARGIN, 221
+        BOTTOMMARGIN, 237
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -211,7 +215,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_PLUGIN_NAME                 "TrafficMonitorMedia"
-    IDS_PLUGIN_DESCRIPTION          "Display the current media title in the taskbar"
+    IDS_PLUGIN_DESCRIPTION          "Display the current media info like title and progress in the taskbar window of TM. Allows you play, stop media and other motions by single click and double click the info zone"
     IDS_PLUGIN_ITEM_NAME            "Media title"
     IDS_ACTION_NONE                 "None"
     IDS_ACTION_TOGGLE_PLAY_PAUSE    "Play/Pause"

@@ -1,17 +1,30 @@
 # TrafficMonitorMedia
 
-一个用于 [TrafficMonitor](https://github.com/zhongyang219/TrafficMonitor) 的任务栏媒体信息插件。
+TrafficMonitorMedia 是一个适用于 [TrafficMonitor](https://github.com/zhongyang219/TrafficMonitor) 的 Windows 媒体信息插件，用于在任务栏窗口中显示当前媒体并提供常用播放控制。
 
-TrafficMonitorMedia 通过 Windows 系统媒体会话显示当前播放的标题、艺术家、播放状态和进度，并支持任务栏媒体控制及多播放器切换。
+最新版本：**1.0.1**
 
-当前版本：**1.0.0**
+## 截图 (v1.0.1)
+
+基础展示
+
+![基础展示](images\example-without-bg.png)
+
+基础展示（带背景图片）
+
+![基础展示（带背景图片）](images\example-with-bg.png)
+
+插件选项
+
+![插件选项](images\options-eg.png)
 
 ## 功能
 
-- 在 TrafficMonitor 任务栏窗口显示当前媒体标题。
-- 可在第二行显示艺术家；关闭后标题使用完整文本区域。
+- 显示当前媒体标题。
+- 可在第二行显示艺术家；关闭后标题可使用完整文本区域。
 - 显示播放、暂停或无媒体状态图标，并可在插件选项中关闭。
 - 在标题底部显示播放进度，并可关闭进度条。
+- 可选显示媒体封面背景：封面保持比例、居中裁剪，并使用深色遮罩保证文字可读性；默认启用高质量平滑缩放。
 - 左键单击、左键双击和右键单击可分别配置为：
   - 无操作
   - 播放/暂停
@@ -29,7 +42,7 @@ TrafficMonitorMedia 通过 Windows 系统媒体会话显示当前播放的标题
 - 插件 DLL 位数必须与 TrafficMonitor 位数一致。
 - 播放器需要支持 Windows Global System Media Transport Controls（GSMTC）。
 
-播放器对 GSMTC 的支持程度不同。部分播放器可能不提供艺术家、进度或外部控制能力，这些情况下插件会自动降级显示。
+播放器对 GSMTC 的支持程度不同。部分播放器可能不提供艺术家、播放进度、媒体封面或外部控制能力，这些情况下插件会自动降级显示。
 
 ## 安装使用
 
@@ -64,7 +77,11 @@ TrafficMonitorMedia 通过 Windows 系统媒体会话显示当前播放的标题
 | 显示播放进度条 | 播放器提供有效时间线时显示标题底部进度 | 开启 |
 | 显示状态图标 | 显示播放、暂停或无媒体图标 | 开启 |
 | 第二行显示艺术家 | 艺术家可用时在第二行显示 | 开启 |
+| 显示媒体封面背景 | 播放器提供 GSMTC 缩略图时将封面绘制为当前显示项背景 | 关闭 |
+| 平滑缩放媒体封面 | 改善封面缩放后的显示效果，仅在封面背景开启时生效 | 开启 |
 | 标题最大宽度 | 限制任务栏显示项宽度，范围为 100–1000 逻辑像素 | 400 |
+
+封面背景开启后会自动裁剪并使用深色遮罩，保证文字清晰可读。平滑缩放默认开启，可改善封面缩放后的显示效果；播放器没有提供封面或图片读取失败时，插件会自动使用原有任务栏背景。
 
 ### 鼠标操作
 
@@ -79,10 +96,10 @@ TrafficMonitorMedia 通过 Windows 系统媒体会话显示当前播放的标题
 
 ## 已知限制
 
-- TrafficMonitor V1.86 可能不会为插件分配独占双行区域。插件会在实际获得的区域内绘制，但无法强制独占完整一列。
+- TrafficMonitor V1.86 可能不会为插件分配独占双行区域。文本和封面只能绘制在插件实际获得的矩形内，无法强制占据完整一列。
 - TrafficMonitor 插件接口不能控制任务栏窗口的绝对位置，因此无法根据 Windows 任务栏居中或靠左设置重新定位插件。
-- GSMTC 没有标准歌词字段，版本 1.0.0 不支持歌词显示。
-- 某些播放器不会完整提供媒体信息、播放时间线或外部控制能力。
+- GSMTC 没有标准歌词字段，版本 1.0.1 不支持歌词显示。
+- 某些播放器不会完整提供媒体信息、播放时间线、封面或外部控制能力。
 
 未来功能与详细行为参见 [DESIGN.md](DESIGN.md)。
 
@@ -126,23 +143,23 @@ TrafficMonitorMedia\bin\x64\Release\TrafficMonitorMedia.dll
 TrafficMonitorMedia.sln
 ```
 
-TrafficMonitor/PluginTester 中的加载和交互测试需要人工执行。
+TrafficMonitor/PluginTester 中的加载、封面显示和交互测试需要人工执行。
 
 ## 项目结构
 
 ```text
 TrafficMonitorMedia/        插件工程、源代码和资源
 include/                    TrafficMonitor 插件接口
-assets/mdi/                 状态图标的 SVG 来源文件
-scripts/                    Visual Studio 工具链定位脚本
-tools/                      图标转换辅助脚本
+assets/mdi/                 插件与状态图标的 SVG 来源文件
+scripts/                    构建、验证、工具链定位和资源生成脚本
 DESIGN.md                   功能设计、限制和未来功能
+CHANGELOG.md                版本更新记录
 TrafficMonitorMedia.sln     Visual Studio 解决方案
 ```
 
 ## 图标来源
 
-播放、暂停和无媒体图标来自 [Material Design Icons](https://icon-sets.iconify.design/mdi/)，作者为 Pictogrammers，按 Apache License 2.0 提供。来源记录见 `assets/mdi/SOURCE.txt`。
+插件图标与状态图标均来自 [Material Design Icons](https://icon-sets.iconify.design/mdi/)，作者为 Pictogrammers，按 Apache License 2.0 提供。来源记录见 `assets/mdi/SOURCE.txt`。
 
 ## 致谢
 

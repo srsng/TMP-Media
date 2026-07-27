@@ -1,10 +1,12 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "TrafficMonitorMediaItem.h"
 #include "TrafficMonitorMedia.h"
 
 #include <algorithm>
 #include <cmath>
 #include <string>
+
+#include <gdiplus.h>
 
 namespace
 {
@@ -14,6 +16,62 @@ namespace
     constexpr int kStatusIconGap96Dpi = 4;
     constexpr int kProgressHeight96Dpi = 2;
     constexpr int kProgressTopGap96Dpi = 2;
+    constexpr BYTE kCoverOverlayAlpha = 136;
+
+    class ScopedMemoryDc final
+    {
+    public:
+        explicit ScopedMemoryDc(HDC compatible_dc) noexcept
+            : m_dc(CreateCompatibleDC(compatible_dc))
+        {
+        }
+
+        ~ScopedMemoryDc()
+        {
+            if (m_dc != nullptr)
+            {
+                DeleteDC(m_dc);
+            }
+        }
+
+        ScopedMemoryDc(const ScopedMemoryDc&) = delete;
+        ScopedMemoryDc& operator=(const ScopedMemoryDc&) = delete;
+
+        [[nodiscard]] HDC Get() const noexcept { return m_dc; }
+
+    private:
+        HDC m_dc{};
+    };
+
+    class ScopedSelectedObject final
+    {
+    public:
+        ScopedSelectedObject(HDC dc, HGDIOBJ object) noexcept
+            : m_dc(dc)
+            , m_old_object(dc != nullptr && object != nullptr ? SelectObject(dc, object) : nullptr)
+        {
+        }
+
+        ~ScopedSelectedObject()
+        {
+            if (m_dc != nullptr && m_old_object != nullptr && m_old_object != HGDI_ERROR)
+            {
+                SelectObject(m_dc, m_old_object);
+            }
+        }
+
+        ScopedSelectedObject(const ScopedSelectedObject&) = delete;
+        ScopedSelectedObject& operator=(const ScopedSelectedObject&) = delete;
+
+        [[nodiscard]] bool IsValid() const noexcept
+        {
+            return m_old_object != nullptr && m_old_object != HGDI_ERROR;
+        }
+
+    private:
+        HDC m_dc{};
+        HGDIOBJ m_old_object{};
+    };
 
     UINT SelectStatusIconResource(
         media::MediaStatusIcon status,
@@ -31,6 +89,209 @@ namespace
         }
     }
 
+    class GdiplusSession final
+    {
+    public:
+        GdiplusSession() noexcept
+        {
+            Gdiplus::GdiplusStartupInput input;
+            if (Gdiplus::GdiplusStartup(&m_token, &input, nullptr) != Gdiplus::Ok)
+            {
+                m_token = 0;
+            }
+        }
+
+        ~GdiplusSession()
+        {
+            if (m_token != 0)
+            {
+                Gdiplus::GdiplusShutdown(m_token);
+            }
+        }
+
+        GdiplusSession(const GdiplusSession&) = delete;
+        GdiplusSession& operator=(const GdiplusSession&) = delete;
+
+        [[nodiscard]] bool Available() const noexcept { return m_token != 0; }
+
+    private:
+        ULONG_PTR m_token{};
+    };
+
+    bool DrawSmoothCoverImage(
+        HDC target_dc,
+        const media::MediaCoverImage& cover,
+        const media::CoverCropRect& crop,
+        int x,
+        int y,
+        int width,
+        int height)
+    {
+        static GdiplusSession gdiplus;
+        if (!gdiplus.Available())
+        {
+            return false;
+        }
+
+        Gdiplus::Bitmap bitmap(cover.Bitmap(), nullptr);
+        if (bitmap.GetLastStatus() != Gdiplus::Ok)
+        {
+            return false;
+        }
+
+        Gdiplus::Graphics graphics(target_dc);
+        if (graphics.GetLastStatus() != Gdiplus::Ok)
+        {
+            return false;
+        }
+
+        graphics.SetCompositingMode(Gdiplus::CompositingModeSourceCopy);
+        graphics.SetCompositingQuality(Gdiplus::CompositingQualityHighQuality);
+        graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+
+        Gdiplus::ImageAttributes attributes;
+        attributes.SetWrapMode(Gdiplus::WrapModeTileFlipXY);
+        const Gdiplus::Rect destination(x, y, width, height);
+        return graphics.DrawImage(
+            &bitmap,
+            destination,
+            crop.x,
+            crop.y,
+            crop.width,
+            crop.height,
+            Gdiplus::UnitPixel,
+            &attributes) == Gdiplus::Ok;
+    }
+
+    bool DrawCoverBackground(
+        HDC target_dc,
+        const media::MediaCoverImage& cover,
+        int x,
+        int y,
+        int width,
+        int height,
+        bool smooth_scaling)
+    {
+        if (target_dc == nullptr || cover.Bitmap() == nullptr || width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        const media::CoverCropRect crop = media::CalculateCoverCrop(
+            cover.Width(),
+            cover.Height(),
+            width,
+            height);
+        if (crop.Empty())
+        {
+            return false;
+        }
+
+        BOOL cover_drawn = FALSE;
+        if (smooth_scaling)
+        {
+            cover_drawn = DrawSmoothCoverImage(target_dc, cover, crop, x, y, width, height)
+                ? TRUE
+                : FALSE;
+        }
+
+        if (!cover_drawn)
+        {
+            ScopedMemoryDc source_dc(target_dc);
+            if (source_dc.Get() == nullptr)
+            {
+                return false;
+            }
+            ScopedSelectedObject source_bitmap(source_dc.Get(), cover.Bitmap());
+            if (!source_bitmap.IsValid())
+            {
+                return false;
+            }
+
+            const int old_stretch_mode = SetStretchBltMode(target_dc, HALFTONE);
+            POINT old_brush_origin{};
+            SetBrushOrgEx(target_dc, x, y, &old_brush_origin);
+            cover_drawn = StretchBlt(
+                target_dc,
+                x,
+                y,
+                width,
+                height,
+                source_dc.Get(),
+                crop.x,
+                crop.y,
+                crop.width,
+                crop.height,
+                SRCCOPY);
+            SetBrushOrgEx(target_dc, old_brush_origin.x, old_brush_origin.y, nullptr);
+            if (old_stretch_mode != 0)
+            {
+                SetStretchBltMode(target_dc, old_stretch_mode);
+            }
+            if (!cover_drawn)
+            {
+                return false;
+            }
+        }
+
+        ScopedMemoryDc overlay_dc(target_dc);
+        if (overlay_dc.Get() == nullptr)
+        {
+            return true;
+        }
+
+        BITMAPINFO overlay_info{};
+        overlay_info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+        overlay_info.bmiHeader.biWidth = 1;
+        overlay_info.bmiHeader.biHeight = -1;
+        overlay_info.bmiHeader.biPlanes = 1;
+        overlay_info.bmiHeader.biBitCount = 32;
+        overlay_info.bmiHeader.biCompression = BI_RGB;
+
+        void* overlay_pixels{};
+        HBITMAP overlay_bitmap = CreateDIBSection(
+            overlay_dc.Get(),
+            &overlay_info,
+            DIB_RGB_COLORS,
+            &overlay_pixels,
+            nullptr,
+            0);
+        if (overlay_bitmap == nullptr || overlay_pixels == nullptr)
+        {
+            if (overlay_bitmap != nullptr)
+            {
+                DeleteObject(overlay_bitmap);
+            }
+            return true;
+        }
+
+        *static_cast<std::uint32_t*>(overlay_pixels) = 0;
+        {
+            ScopedSelectedObject selected_overlay(overlay_dc.Get(), overlay_bitmap);
+            if (selected_overlay.IsValid())
+            {
+                BLENDFUNCTION blend{};
+                blend.BlendOp = AC_SRC_OVER;
+                blend.SourceConstantAlpha = kCoverOverlayAlpha;
+                AlphaBlend(
+                    target_dc,
+                    x,
+                    y,
+                    width,
+                    height,
+                    overlay_dc.Get(),
+                    0,
+                    0,
+                    1,
+                    1,
+                    blend);
+            }
+        }
+        DeleteObject(overlay_bitmap);
+        return true;
+    }
 }
 
 const wchar_t* CTrafficMonitorMediaItem::GetItemName() const
@@ -120,6 +381,12 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
 
     const media::SettingData settings = g_plugin.GetSettingsSnapshot();
     const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
+    const bool has_cover_background = settings.show_cover_background
+        && snapshot.cover
+        && w > 0
+        && h > 0
+        && DrawCoverBackground(pDC->GetSafeHdc(), *snapshot.cover, x, y, w, h, settings.smooth_cover_scaling);
+    const bool effective_dark_mode = dark_mode || has_cover_background;
     const bool show_timeline = settings.show_progress && snapshot.has_timeline;
     const int padding = g_plugin.DPI(kHorizontalPadding96Dpi);
     const int icon_size = settings.show_status_icon
@@ -141,7 +408,7 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
         const media::MediaStatusIcon status_icon = media::SelectMediaStatusIcon(
             snapshot.state,
             snapshot.playback_state);
-        const HICON icon = g_plugin.GetIcon(SelectStatusIconResource(status_icon, dark_mode));
+        const HICON icon = g_plugin.GetIcon(SelectStatusIconResource(status_icon, effective_dark_mode));
         const int drawn_icon_size = (std::min)(icon_size, content_height);
         if (icon != nullptr && drawn_icon_size > 0)
         {
@@ -174,7 +441,7 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
         w - padding * 2 - icon_size - icon_gap);
     CRect text_rect(CPoint(text_x, y), CSize(text_width, content_height));
 
-    const COLORREF text_color = dark_mode ? RGB(245, 245, 245) : RGB(32, 32, 32);
+    const COLORREF text_color = effective_dark_mode ? RGB(245, 245, 245) : RGB(32, 32, 32);
     const COLORREF old_text_color = pDC->SetTextColor(text_color);
     const int old_background_mode = pDC->SetBkMode(TRANSPARENT);
     if (text_width > 0 && content_height > 0)
@@ -228,11 +495,11 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
         const int progress_width = static_cast<int>(std::lround(static_cast<double>(w) * progress));
         const int progress_y = y + h - progress_height;
         pDC->FillSolidRect(x, progress_y, w, progress_height,
-            dark_mode ? RGB(88, 88, 88) : RGB(205, 205, 205));
+            effective_dark_mode ? RGB(88, 88, 88) : RGB(205, 205, 205));
         if (progress_width > 0)
         {
             pDC->FillSolidRect(x, progress_y, progress_width, progress_height,
-                dark_mode ? RGB(80, 170, 255) : RGB(0, 100, 210));
+                effective_dark_mode ? RGB(80, 170, 255) : RGB(0, 100, 210));
         }
     }
 }

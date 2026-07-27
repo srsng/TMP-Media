@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "MediaSettings.h"
 
 using media::MediaControlAction;
@@ -7,6 +7,8 @@ constexpr media::SettingData kDefaultSettings{};
 static_assert(kDefaultSettings.show_progress);
 static_assert(kDefaultSettings.show_status_icon);
 static_assert(kDefaultSettings.show_artist_on_second_line);
+static_assert(!kDefaultSettings.show_cover_background);
+static_assert(kDefaultSettings.smooth_cover_scaling);
 static_assert(kDefaultSettings.max_title_width == media::kDefaultMaxTitleWidth);
 static_assert(kDefaultSettings.input.left_click == MediaControlAction::TogglePlayPause);
 static_assert(kDefaultSettings.input.left_double_click == MediaControlAction::SkipNext);
@@ -17,6 +19,8 @@ static_assert(kDefaultSettings.input.wheel_down == MediaControlAction::None);
 constexpr media::SettingData kRepeatedBindings{
     true,
     true,
+    true,
+    false,
     true,
     400,
     {
@@ -48,6 +52,8 @@ constexpr media::SettingData kNormalized = media::NormalizeSettings({
     true,
     false,
     true,
+    true,
+    false,
     5000,
     {
         static_cast<MediaControlAction>(99),
@@ -58,6 +64,8 @@ constexpr media::SettingData kNormalized = media::NormalizeSettings({
     },
 });
 static_assert(!kNormalized.show_status_icon);
+static_assert(kNormalized.show_cover_background);
+static_assert(!kNormalized.smooth_cover_scaling);
 static_assert(kNormalized.max_title_width == media::kMaximumTitleWidth);
 static_assert(kNormalized.input.left_click == kDefaultSettings.input.left_click);
 static_assert(kNormalized.input.left_double_click == MediaControlAction::SkipNext);

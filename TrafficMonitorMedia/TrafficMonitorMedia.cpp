@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "TrafficMonitorMedia.h"
 #include "OptionsDlg.h"
 
@@ -175,6 +175,7 @@ ITMPlugin::OptionReturn CTrafficMonitorMedia::ShowOptionsDialog(void* hParent)
     }
 
     PublishSettings(new_settings);
+    m_media_service.SetCoverBackgroundEnabled(new_settings.show_cover_background);
     SaveConfig(new_settings);
     return ITMPlugin::OR_OPTION_CHANGED;
 }
@@ -188,13 +189,13 @@ const wchar_t* CTrafficMonitorMedia::GetInfo(PluginInfoIndex index)
     case TMI_DESCRIPTION:
         return StringRes(IDS_PLUGIN_DESCRIPTION).GetString();
     case TMI_AUTHOR:
-        return L"TMP-media";
+        return L"TMP-Media";
     case TMI_COPYRIGHT:
-        return L"Copyright (C) TMP-media";
+        return L"Copyright (C) TMP-Media";
     case TMI_URL:
-        return L"https://github.com/srsng/TMP-media";
+        return L"https://github.com/srsng/TMP-Media";
     case TMI_VERSION:
-        return L"1.0.0";
+        return L"1.0.1";
     default:
         return L"";
     }
@@ -204,6 +205,7 @@ void CTrafficMonitorMedia::OnInitialize(ITrafficMonitor* pApp)
 {
     m_app = pApp;
     LoadConfig(pApp->GetPluginConfigDir());
+    m_media_service.SetCoverBackgroundEnabled(GetSettingsSnapshot().show_cover_background);
     m_media_service.Start();
 }
 
@@ -234,6 +236,16 @@ void CTrafficMonitorMedia::LoadConfig(const std::wstring& config_dir)
             kDisplaySection,
             L"show_artist_on_second_line",
             settings.show_artist_on_second_line);
+        settings.show_cover_background = ReadProfileBool(
+            m_config_path,
+            kDisplaySection,
+            L"show_cover_background",
+            settings.show_cover_background);
+        settings.smooth_cover_scaling = ReadProfileBool(
+            m_config_path,
+            kDisplaySection,
+            L"smooth_cover_scaling",
+            settings.smooth_cover_scaling);
         settings.max_title_width = ReadProfileInt(
             m_config_path,
             kDisplaySection,
@@ -287,6 +299,16 @@ void CTrafficMonitorMedia::SaveConfig(const media::SettingData& settings) const
         kDisplaySection,
         L"show_artist_on_second_line",
         normalized.show_artist_on_second_line ? L"1" : L"0");
+    WriteProfileValue(
+        m_config_path,
+        kDisplaySection,
+        L"show_cover_background",
+        normalized.show_cover_background ? L"1" : L"0");
+    WriteProfileValue(
+        m_config_path,
+        kDisplaySection,
+        L"smooth_cover_scaling",
+        normalized.smooth_cover_scaling ? L"1" : L"0");
     WriteProfileValue(
         m_config_path,
         kDisplaySection,

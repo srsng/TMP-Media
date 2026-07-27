@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "MediaSettings.h"
 
 class COptionsDlg : public CDialog
@@ -32,6 +32,8 @@ private:
     BOOL m_show_progress{ TRUE };
     BOOL m_show_status_icon{ TRUE };
     BOOL m_show_artist_on_second_line{ TRUE };
+    BOOL m_show_cover_background{ FALSE };
+    BOOL m_smooth_cover_scaling{ TRUE };
     int m_max_title_width{ media::kDefaultMaxTitleWidth };
     CSpinButtonCtrl m_max_title_width_spin;
     CComboBox m_left_click_combo;

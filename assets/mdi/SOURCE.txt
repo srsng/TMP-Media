@@ -12,5 +12,6 @@ Included icons:
 - mdi:play
 - mdi:pause
 - mdi:music-off
+- mdi:motion-play（插件图标）
 
 Generated ICO files under TrafficMonitorMedia/res are derived assets used by the plugin.

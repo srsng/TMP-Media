@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "TrafficMonitorMedia.h"
 #include "OptionsDlg.h"
 
@@ -19,6 +19,8 @@ void COptionsDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Check(pDX, IDC_SHOW_PROGRESS_CHECK, m_show_progress);
     DDX_Check(pDX, IDC_SHOW_STATUS_ICON_CHECK, m_show_status_icon);
     DDX_Check(pDX, IDC_SHOW_ARTIST_SECOND_LINE_CHECK, m_show_artist_on_second_line);
+    DDX_Check(pDX, IDC_SHOW_COVER_BACKGROUND_CHECK, m_show_cover_background);
+    DDX_Check(pDX, IDC_SMOOTH_COVER_SCALING_CHECK, m_smooth_cover_scaling);
     DDX_Text(pDX, IDC_MAX_TITLE_WIDTH_EDIT, m_max_title_width);
     DDV_MinMaxInt(pDX, m_max_title_width, media::kMinimumTitleWidth, media::kMaximumTitleWidth);
     DDX_Control(pDX, IDC_MAX_TITLE_WIDTH_SPIN, m_max_title_width_spin);
@@ -38,6 +40,8 @@ BOOL COptionsDlg::OnInitDialog()
     m_show_progress = m_data.show_progress ? TRUE : FALSE;
     m_show_status_icon = m_data.show_status_icon ? TRUE : FALSE;
     m_show_artist_on_second_line = m_data.show_artist_on_second_line ? TRUE : FALSE;
+    m_show_cover_background = m_data.show_cover_background ? TRUE : FALSE;
+    m_smooth_cover_scaling = m_data.smooth_cover_scaling ? TRUE : FALSE;
     m_max_title_width = m_data.max_title_width;
     UpdateData(FALSE);
 
@@ -66,6 +70,8 @@ void COptionsDlg::OnOK()
     updated.show_progress = m_show_progress != FALSE;
     updated.show_status_icon = m_show_status_icon != FALSE;
     updated.show_artist_on_second_line = m_show_artist_on_second_line != FALSE;
+    updated.show_cover_background = m_show_cover_background != FALSE;
+    updated.smooth_cover_scaling = m_smooth_cover_scaling != FALSE;
     updated.max_title_width = m_max_title_width;
     updated.input.left_click = ReadAction(m_left_click_combo, updated.input.left_click);
     updated.input.left_double_click = ReadAction(

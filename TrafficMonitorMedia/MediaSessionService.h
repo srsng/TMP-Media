@@ -1,5 +1,6 @@
 #pragma once
 
+#include "MediaCoverImage.h"
 #include "MediaSessionSelection.h"
 #include "MediaText.h"
 
@@ -8,6 +9,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -24,6 +26,7 @@ struct MediaTitleSnapshot
     bool has_timeline{};
     double progress_fraction{};
     bool can_switch_session{};
+    std::shared_ptr<const media::MediaCoverImage> cover;
 };
 
 // 所有 GSMTC 调用都在内部工作线程完成。TrafficMonitor 的 UI 线程只能读取快照或提交请求。
@@ -39,6 +42,7 @@ public:
     void Start();
     void Stop();
     void RequestRefresh();
+    void SetCoverBackgroundEnabled(bool enabled);
     void RequestSwitchSession(media::SessionSwitchDirection direction);
     void RequestImmediateAction(media::MediaControlAction action);
     void RequestSingleClick(media::MediaControlAction action);
@@ -55,6 +59,7 @@ private:
         bool refresh{};
         std::optional<media::SessionSwitchDirection> switch_direction;
         media::MediaControlAction action{ media::MediaControlAction::None };
+        bool cover_background_enabled{};
     };
 
     struct PendingSingleClick
@@ -81,4 +86,5 @@ private:
     bool m_started{};
     bool m_stop_requested{};
     bool m_refresh_requested{};
+    bool m_cover_background_enabled{};
 };
