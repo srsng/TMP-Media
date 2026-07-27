@@ -8,15 +8,15 @@ TrafficMonitorMedia 是一个适用于 [TrafficMonitor](https://github.com/zhong
 
 基础展示
 
-![基础展示](images\example-without-bg.png)
+![基础展示](./images/example-without-bg.png)
 
 基础展示（带背景图片）
 
-![基础展示（带背景图片）](images\example-with-bg.png)
+![基础展示（带背景图片）](./images/example-with-bg.png)
 
 插件选项
 
-![插件选项](images\options-eg.png)
+![插件选项](./images/options-eg.png)
 
 ## 功能
 
