@@ -4,19 +4,14 @@
 set shell := ["powershell.exe", "-NoProfile", "-Command"]
 set script-interpreter := ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
 
-project := "TrafficMonitorMedia\\TrafficMonitorMedia.vcxproj"
+build_plugin_script := "scripts\\Build-Plugin.ps1"
 vs_toolchain_script := "scripts\\Get-VsToolchain.ps1"
 
 # 构建插件；可选参数：just build Debug x64。
 [script]
 build configuration="Release" platform="x64":
-    $project = (Resolve-Path -LiteralPath '{{ project }}').Path
-    $toolchainScript = (Resolve-Path -LiteralPath '{{ vs_toolchain_script }}').Path
-    $toolchain = & $toolchainScript
-
-    Write-Output "MSBuild: $($toolchain.MSBuild)"
-    $msbuild = $toolchain.MSBuild
-    & $msbuild $project '/m' '/t:Build' "/p:Configuration={{ configuration }}" "/p:Platform={{ platform }}" '/v:minimal'
+    $buildScript = (Resolve-Path -LiteralPath '{{ build_plugin_script }}').Path
+    & $buildScript -Configuration '{{ configuration }}' -Platform '{{ platform }}'
     exit $LASTEXITCODE
 
 # 删除已知生成物后重新构建，强制重新编译全部源文件。
@@ -31,7 +26,13 @@ rebuild configuration="Release" platform="x64":
 # 检查 DLL 是否存在，并验证 TrafficMonitor 所需导出。
 [script]
 verify configuration="Release" platform="x64":
-    $dll = Join-Path $PWD 'TrafficMonitorMedia\\bin\\{{ platform }}\\{{ configuration }}\\TrafficMonitorMedia.dll'
+    $outputDirectory = if ('{{ platform }}' -eq 'Win32') {
+        Join-Path $PWD 'TrafficMonitorMedia\\bin\\{{ configuration }}'
+    }
+    else {
+        Join-Path $PWD 'TrafficMonitorMedia\\bin\\{{ platform }}\\{{ configuration }}'
+    }
+    $dll = Join-Path $outputDirectory 'TrafficMonitorMedia.dll'
     if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) {
         throw "未找到 DLL：$dll。请先执行 just build {{ configuration }} {{ platform }}。"
     }
@@ -54,10 +55,8 @@ verify configuration="Release" platform="x64":
 # 构建后验证 DLL 与导出。
 [script]
 check configuration="Release" platform="x64":
-    & just build '{{ configuration }}' '{{ platform }}'
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-    & just verify '{{ configuration }}' '{{ platform }}'
+    $buildScript = (Resolve-Path -LiteralPath '{{ build_plugin_script }}').Path
+    & $buildScript -Configuration '{{ configuration }}' -Platform '{{ platform }}' -Verify
     exit $LASTEXITCODE
 
 # 仅删除本工程已知的生成物。
@@ -66,7 +65,9 @@ clean:
     $root = (Resolve-Path -LiteralPath '.').Path
     $targets = @(
         'TrafficMonitorMedia\bin',
+        'TrafficMonitorMedia\Release',
         'TrafficMonitorMedia\TrafficM.1C2173CA',
+        'bin',
         '.vs'
     )
 

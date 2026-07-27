@@ -1,0 +1,163 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v* tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: "Build | ${{ matrix.platform }}"
+    runs-on: windows-2025-vs2026
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Win32
+            package_arch: win32
+            dll_path: TrafficMonitorMedia/bin/Release/TrafficMonitorMedia.dll
+          - platform: x64
+            package_arch: x64
+            dll_path: TrafficMonitorMedia/bin/x64/Release/TrafficMonitorMedia.dll
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release tag
+        id: tag
+        shell: pwsh
+        env:
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          if ($env:REQUESTED_TAG -notmatch '^v[0-9A-Za-z][0-9A-Za-z._-]*$') {
+              throw "发布标签格式无效：$env:REQUESTED_TAG"
+          }
+          "value=$env:REQUESTED_TAG" >> $env:GITHUB_OUTPUT
+
+      - name: Build and verify
+        shell: pwsh
+        run: >-
+          & .\scripts\Build-Plugin.ps1
+          -Configuration Release
+          -Platform '${{ matrix.platform }}'
+          -Verify
+
+      - name: Create release package
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          $assetDirectory = Join-Path $PWD 'release-assets'
+          $runnerTempRoot = [System.IO.Path]::GetFullPath($env:RUNNER_TEMP)
+          $runnerTempPrefix = $runnerTempRoot.TrimEnd('\') + '\'
+          $stagingDirectory = [System.IO.Path]::GetFullPath(
+              (Join-Path $runnerTempRoot 'TrafficMonitorMedia-package')
+          )
+          if (-not $stagingDirectory.StartsWith(
+              $runnerTempPrefix,
+              [System.StringComparison]::OrdinalIgnoreCase
+          )) {
+              throw "拒绝清理 runner 临时目录以外的路径：$stagingDirectory"
+          }
+
+          $packageName = "TrafficMonitorMedia-$env:RELEASE_TAG-${{ matrix.package_arch }}.zip"
+          $packagePath = Join-Path $assetDirectory $packageName
+          $stagedDll = Join-Path $stagingDirectory 'TrafficMonitorMedia.dll'
+
+          New-Item -ItemType Directory -Force -Path $assetDirectory | Out-Null
+          if (Test-Path -LiteralPath $stagingDirectory) {
+              Remove-Item -LiteralPath $stagingDirectory -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $stagingDirectory | Out-Null
+          Copy-Item -LiteralPath '${{ matrix.dll_path }}' -Destination $stagedDll
+          Compress-Archive -LiteralPath $stagedDll -DestinationPath $packagePath -CompressionLevel Optimal
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($packagePath)
+          try {
+              $files = @($archive.Entries | Where-Object { -not [string]::IsNullOrEmpty($_.Name) })
+              if ($files.Count -ne 1 -or $files[0].FullName -ne 'TrafficMonitorMedia.dll') {
+                  throw "发布包内容不符合预期：$packagePath"
+              }
+          }
+          finally {
+              $archive.Dispose()
+          }
+
+          Write-Output "已创建发布包：$packagePath"
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.package_arch }}
+          path: release-assets/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          mapfile -t packages < <(find release-assets -maxdepth 1 -type f -name '*.zip' -print | sort)
+          if [[ ${#packages[@]} -ne 2 ]]; then
+            echo "Expected 2 release packages, found ${#packages[@]}." >&2
+            printf '%s\n' "${packages[@]}" >&2
+            exit 1
+          fi
+
+          (
+            cd release-assets
+            sha256sum ./*.zip > SHA256SUMS.txt
+          )
+          cat release-assets/SHA256SUMS.txt
+
+      - name: Publish release
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            release-assets/*.zip \
+            release-assets/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --generate-notes \
+            --title "$RELEASE_TAG"

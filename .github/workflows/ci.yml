@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: "${{ matrix.configuration }} | ${{ matrix.platform }}"
+    runs-on: windows-2025-vs2026
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - configuration: Debug
+            platform: Win32
+            dll_path: TrafficMonitorMedia/bin/Debug/TrafficMonitorMedia.dll
+          - configuration: Debug
+            platform: x64
+            dll_path: TrafficMonitorMedia/bin/x64/Debug/TrafficMonitorMedia.dll
+          - configuration: Release
+            platform: Win32
+            dll_path: TrafficMonitorMedia/bin/Release/TrafficMonitorMedia.dll
+          - configuration: Release
+            platform: x64
+            dll_path: TrafficMonitorMedia/bin/x64/Release/TrafficMonitorMedia.dll
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build and verify
+        shell: pwsh
+        run: >-
+          & .\scripts\Build-Plugin.ps1
+          -Configuration '${{ matrix.configuration }}'
+          -Platform '${{ matrix.platform }}'
+          -Verify
+
+      - name: Upload Release DLL
+        if: matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: TrafficMonitorMedia-${{ matrix.platform }}-Release
+          path: ${{ matrix.dll_path }}
+          if-no-files-found: error
+          retention-days: 7

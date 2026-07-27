@@ -5,10 +5,22 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # 当前宿主进程有时同时携带 PATH 与 Path。Windows 的子进程环境不接受
-# 这两个大小写不同、语义相同的键；统一后让后续原生工具继承干净的环境。
+# 这两个大小写不同、语义相同的键；删除全部大小写变体后只保留 Path。
 $pathValue = [string]$env:Path
-[Environment]::SetEnvironmentVariable('PATH', $null, 'Process')
-[Environment]::SetEnvironmentVariable('Path', $pathValue, 'Process')
+$pathKeys = @(
+    [Environment]::GetEnvironmentVariables('Process').Keys |
+        Where-Object {
+            [string]::Equals(
+                [string]$_,
+                'Path',
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+        }
+)
+foreach ($pathKey in $pathKeys) {
+    Remove-Item -LiteralPath ("Env:$pathKey") -ErrorAction Stop
+}
+Set-Item -LiteralPath 'Env:Path' -Value $pathValue
 
 $programFilesX86 = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
 if ([string]::IsNullOrWhiteSpace($programFilesX86)) {
