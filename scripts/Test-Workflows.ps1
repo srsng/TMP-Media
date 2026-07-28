@@ -52,19 +52,41 @@ if ($Scope -in @('CI', 'All')) {
     Assert-Matches $ci '(?s)Build-Plugin\.ps1.+-Verify' 'CI 必须调用公共构建脚本并启用导出验证。'
     Assert-Matches $ci 'retention-days:\s*7' 'CI Release Artifact 必须保留 7 天。'
 
-    foreach ($pair in @(
-        @('Debug', 'Win32'),
-        @('Debug', 'x64'),
-        @('Release', 'Win32'),
-        @('Release', 'x64')
+    foreach ($target in @(
+        @('Debug', 'x86', 'x86', 'TrafficMonitorMedia/bin/Debug/TrafficMonitorMedia.dll'),
+        @('Debug', 'x64', 'x64', 'TrafficMonitorMedia/bin/x64/Debug/TrafficMonitorMedia.dll'),
+        @('Debug', 'ARM64EC', 'arm64ec', 'TrafficMonitorMedia/bin/ARM64EC/Debug/TrafficMonitorMedia.dll'),
+        @('Release', 'x86', 'x86', 'TrafficMonitorMedia/bin/Release/TrafficMonitorMedia.dll'),
+        @('Release', 'x64', 'x64', 'TrafficMonitorMedia/bin/x64/Release/TrafficMonitorMedia.dll'),
+        @('Release', 'ARM64EC', 'arm64ec', 'TrafficMonitorMedia/bin/ARM64EC/Release/TrafficMonitorMedia.dll')
     )) {
-        $configuration = [regex]::Escape($pair[0])
-        $platform = [regex]::Escape($pair[1])
-        $pattern = "(?ms)- configuration:\s*$configuration\s*\r?\n\s+platform:\s*$platform\s*\r?\n\s+dll_path:"
-        Assert-Matches $ci $pattern "CI 缺少矩阵组合：$($pair[0])|$($pair[1])。"
+        $configuration = [regex]::Escape($target[0])
+        $platform = [regex]::Escape($target[1])
+        $artifactArchitecture = [regex]::Escape($target[2])
+        $dllPath = [regex]::Escape($target[3])
+        $pattern = (
+            "(?ms)- configuration:\s*$configuration\s*\r?\n" +
+            "\s+platform:\s*$platform\s*\r?\n" +
+            "\s+artifact_arch:\s*$artifactArchitecture\s*\r?\n" +
+            "\s+dll_path:\s*$dllPath"
+        )
+        Assert-Matches $ci $pattern (
+            "CI 缺少矩阵组合：$($target[0])|$($target[1])，" +
+            '或其对外架构名/输出路径不正确。'
+        )
     }
 
-    Assert-True (-not $ci.Contains('ARM64EC')) 'CI 不应构建 TrafficMonitor 当前未发布的 ARM64EC 宿主架构。'
+    $ciConfigurations = [regex]::Matches($ci, '(?m)^\s+- configuration:').Count
+    Assert-True ($ciConfigurations -eq 6) "CI 应恰好包含 6 个构建组合，实际为：$ciConfigurations。"
+    Assert-Matches $ci 'name:\s*TrafficMonitorMedia-\$\{\{ matrix\.artifact_arch \}\}-Release' (
+        'CI Release Artifact 必须使用对外架构名。'
+    )
+    Assert-True (-not $ci.Contains('artifact_arch: win32')) 'CI 对外架构名不应继续使用 win32。'
+    Assert-True (-not $ci.Contains('TrafficMonitorMedia-' + '$' + '{{ matrix.platform }}-Release')) (
+        'CI Artifact 不应直接使用 MSBuild 平台名。'
+    )
+    Assert-True (-not ([regex]::IsMatch($ci, '(?m)^\s+platform:\s*Win32\s*$'))) 'CI 应使用 x86 作为 32 位对外平台名。'
+    Assert-True (-not ([regex]::IsMatch($ci, '(?m)^\s+platform:\s*ARM64\s*$'))) 'CI 不应引用工程不存在的 ARM64 平台。'
 
     Write-Output 'ci.yml 契约检查通过。'
 }
@@ -85,23 +107,39 @@ if ($Scope -in @('Release', 'All')) {
     Assert-Matches $release 'actions/download-artifact@v8' 'Release 必须使用 actions/download-artifact@v8。'
     Assert-Matches $release '(?s)Build-Plugin\.ps1.+Release.+-Verify' 'Release 必须执行 Release 构建和导出验证。'
     Assert-Matches $release 'SHA256SUMS\.txt' 'Release 必须生成 SHA256SUMS.txt。'
-    Assert-Matches $release 'packages\[@\].+-ne 2' 'Release 必须校验恰好生成两套发布包。'
+    Assert-Matches $release 'packages\[@\].+-ne 3' 'Release 必须校验恰好生成三套发布包。'
     Assert-Matches $release 'gh release create' 'Release 必须使用 GitHub CLI 创建发布。'
     Assert-Matches $release '--verify-tag' 'Release 创建时必须验证标签存在。'
     Assert-Matches $release '--generate-notes' 'Release 必须自动生成发布说明。'
 
-    foreach ($pair in @(
-        @('Win32', 'win32'),
-        @('x64', 'x64')
+    foreach ($target in @(
+        @('x86', 'x86', 'TrafficMonitorMedia/bin/Release/TrafficMonitorMedia.dll'),
+        @('x64', 'x64', 'TrafficMonitorMedia/bin/x64/Release/TrafficMonitorMedia.dll'),
+        @('ARM64EC', 'arm64ec', 'TrafficMonitorMedia/bin/ARM64EC/Release/TrafficMonitorMedia.dll')
     )) {
-        $platform = [regex]::Escape($pair[0])
-        $packageArchitecture = [regex]::Escape($pair[1])
-        $pattern = "(?ms)- platform:\s*$platform\s*\r?\n\s+package_arch:\s*$packageArchitecture\s*\r?\n\s+dll_path:"
-        Assert-Matches $release $pattern "Release 缺少构建目标：$($pair[0])。"
+        $platform = [regex]::Escape($target[0])
+        $packageArchitecture = [regex]::Escape($target[1])
+        $dllPath = [regex]::Escape($target[2])
+        $pattern = (
+            "(?ms)- platform:\s*$platform\s*\r?\n" +
+            "\s+package_arch:\s*$packageArchitecture\s*\r?\n" +
+            "\s+dll_path:\s*$dllPath"
+        )
+        Assert-Matches $release $pattern (
+            "Release 缺少构建目标：$($target[0])，" +
+            '或其发布架构名/输出路径不正确。'
+        )
     }
 
-    Assert-True (-not $release.Contains('ARM64EC')) 'Release 不应发布 TrafficMonitor 当前未提供的 ARM64EC 宿主架构。'
-    Assert-True (-not $release.Contains('arm64ec')) 'Release 不应生成 arm64ec 命名的发布包。'
+    $releasePlatforms = [regex]::Matches($release, '(?m)^\s+- platform:').Count
+    Assert-True ($releasePlatforms -eq 3) (
+        "Release 应恰好包含 3 个构建目标，实际为：$releasePlatforms。"
+    )
+    Assert-True (-not $release.Contains('package_arch: win32')) (
+        'Release 对外架构名不应继续使用 win32。'
+    )
+    Assert-True (-not ([regex]::IsMatch($release, '(?m)^\s+platform:\s*Win32\s*$'))) 'Release 应使用 x86 作为 32 位对外平台名。'
+    Assert-True (-not ([regex]::IsMatch($release, '(?m)^\s+platform:\s*ARM64\s*$'))) 'Release 不应引用工程不存在的 ARM64 平台。'
 
     Write-Output 'release.yml 契约检查通过。'
 }

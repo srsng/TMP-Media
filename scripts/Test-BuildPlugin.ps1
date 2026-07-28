@@ -18,9 +18,11 @@ function Assert-True {
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $buildScript = Join-Path $repositoryRoot 'scripts\Build-Plugin.ps1'
 $toolchainScript = Join-Path $repositoryRoot 'scripts\Get-VsToolchain.ps1'
+$project = Join-Path $repositoryRoot 'TrafficMonitorMedia\TrafficMonitorMedia.vcxproj'
 
 Assert-True (Test-Path -LiteralPath $buildScript -PathType Leaf) "未找到构建脚本：$buildScript"
 Assert-True (Test-Path -LiteralPath $toolchainScript -PathType Leaf) "未找到工具链脚本：$toolchainScript"
+Assert-True (Test-Path -LiteralPath $project -PathType Leaf) "未找到 Visual C++ 工程：$project"
 
 $tokens = $null
 $parseErrors = $null
@@ -49,8 +51,8 @@ $platformAttribute = $command.Parameters['Platform'].Attributes |
     Select-Object -First 1
 Assert-True ($null -ne $platformAttribute) 'Platform 参数缺少 ValidateSet。'
 Assert-True (
-    (@($platformAttribute.ValidValues | Sort-Object) -join ',') -eq 'ARM64EC,Win32,x64'
-) 'Platform 仅应允许 Win32、x64、ARM64EC。'
+    (@($platformAttribute.ValidValues | Sort-Object) -join ',') -eq 'ARM64EC,Win32,x64,x86'
+) 'Platform 仅应允许 Win32、x86、x64、ARM64EC。'
 
 Assert-True $command.Parameters.ContainsKey('Verify') '构建脚本缺少 Verify 开关。'
 
@@ -59,11 +61,58 @@ foreach ($requiredText in @(
     'Get-VsToolchain.ps1',
     'TrafficMonitorMedia.vcxproj',
     'TMPluginGetInstance',
-    "if (`$Platform -eq 'Win32')",
+    "`$msbuildPlatform = if (`$Platform -eq 'x86')",
+    "if (`$msbuildPlatform -eq 'Win32')",
     "bin\`$Configuration",
-    "bin\`$Platform\`$Configuration"
+    "bin\`$msbuildPlatform\`$Configuration"
 )) {
     Assert-True $scriptText.Contains($requiredText) "构建脚本缺少关键契约：$requiredText"
+}
+
+$projectText = Get-Content -LiteralPath $project -Raw
+foreach ($configuration in @('Debug', 'Release')) {
+    foreach ($platform in @('Win32', 'x64', 'ARM64EC')) {
+        $projectConfiguration = '<ProjectConfiguration Include="' + $configuration + '|' + $platform + '">'
+        Assert-True $projectText.Contains($projectConfiguration) (
+            "Visual C++ 工程缺少配置：$configuration|$platform。"
+        )
+    }
+}
+
+foreach ($platform in @('Win32', 'x64', 'ARM64EC')) {
+    foreach ($configuration in @('Debug', 'Release')) {
+        $condition = 'Condition="''$(Configuration)|$(Platform)''==''' + $configuration + '|' + $platform + '''"'
+        $pchContract = '<PrecompiledHeader ' + $condition + '>Create</PrecompiledHeader>'
+        Assert-True $projectText.Contains($pchContract) (
+            "Visual C++ 工程缺少预编译头配置：$configuration|$platform。"
+        )
+    }
+}
+
+$solution = Join-Path $repositoryRoot 'TrafficMonitorMedia.sln'
+Assert-True (Test-Path -LiteralPath $solution -PathType Leaf) "未找到解决方案：$solution"
+$solutionText = Get-Content -LiteralPath $solution -Raw
+Assert-True (-not $solutionText.Contains('Any CPU')) '解决方案不应引用 C++ 工程不存在的 Any CPU 配置。'
+foreach ($target in @(
+    @('Debug', 'x86', 'Win32'),
+    @('Release', 'x86', 'Win32'),
+    @('Debug', 'x64', 'x64'),
+    @('Release', 'x64', 'x64'),
+    @('Debug', 'ARM64EC', 'ARM64EC'),
+    @('Release', 'ARM64EC', 'ARM64EC')
+)) {
+    $solutionConfiguration = $target[0]
+    $solutionPlatform = $target[1]
+    $projectPlatform = $target[2]
+    Assert-True $solutionText.Contains("$solutionConfiguration|$solutionPlatform = $solutionConfiguration|$solutionPlatform") (
+        "解决方案缺少平台：$solutionConfiguration|$solutionPlatform。"
+    )
+    Assert-True $solutionText.Contains(".$solutionConfiguration|$solutionPlatform.ActiveCfg = $solutionConfiguration|$projectPlatform") (
+        "解决方案平台映射错误：$solutionConfiguration|$solutionPlatform 应映射到 $solutionConfiguration|$projectPlatform。"
+    )
+    Assert-True $solutionText.Contains(".$solutionConfiguration|$solutionPlatform.Build.0 = $solutionConfiguration|$projectPlatform") (
+        "解决方案构建映射错误：$solutionConfiguration|$solutionPlatform 应构建 $solutionConfiguration|$projectPlatform。"
+    )
 }
 
 $null = & $toolchainScript

@@ -26,11 +26,12 @@ rebuild configuration="Release" platform="x64":
 # 检查 DLL 是否存在，并验证 TrafficMonitor 所需导出。
 [script]
 verify configuration="Release" platform="x64":
-    $outputDirectory = if ('{{ platform }}' -eq 'Win32') {
+    $msbuildPlatform = if ('{{ platform }}' -eq 'x86') { 'Win32' } else { '{{ platform }}' }
+    $outputDirectory = if ($msbuildPlatform -eq 'Win32') {
         Join-Path $PWD 'TrafficMonitorMedia\\bin\\{{ configuration }}'
     }
     else {
-        Join-Path $PWD 'TrafficMonitorMedia\\bin\\{{ platform }}\\{{ configuration }}'
+        Join-Path $PWD "TrafficMonitorMedia\\bin\\$msbuildPlatform\\{{ configuration }}"
     }
     $dll = Join-Path $outputDirectory 'TrafficMonitorMedia.dll'
     if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) {

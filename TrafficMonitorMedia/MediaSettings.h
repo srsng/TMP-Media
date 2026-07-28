@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <string_view>
 
@@ -12,17 +12,27 @@ namespace media
         SkipNext,
     };
 
+    enum class WheelAction
+    {
+        None,
+        SwitchTrack,
+        SwitchMediaSession,
+        AdjustSystemVolume,
+    };
+
     inline constexpr int kMinimumTitleWidth = 100;
     inline constexpr int kDefaultMaxTitleWidth = 400;
     inline constexpr int kMaximumTitleWidth = 1000;
+    inline constexpr int kMinimumSystemVolumeStepPercent = 1;
+    inline constexpr int kDefaultSystemVolumeStepPercent = 5;
+    inline constexpr int kMaximumSystemVolumeStepPercent = 50;
 
     struct InputBindings
     {
         MediaControlAction left_click{ MediaControlAction::TogglePlayPause };
         MediaControlAction left_double_click{ MediaControlAction::SkipNext };
         MediaControlAction right_click{ MediaControlAction::None };
-        MediaControlAction wheel_up{ MediaControlAction::None };
-        MediaControlAction wheel_down{ MediaControlAction::None };
+        WheelAction wheel{ WheelAction::SwitchMediaSession };
 
         constexpr bool operator==(const InputBindings&) const = default;
     };
@@ -35,6 +45,7 @@ namespace media
         bool show_cover_background{ false };
         bool smooth_cover_scaling{ true };
         int max_title_width{ kDefaultMaxTitleWidth };
+        int system_volume_step_percent{ kDefaultSystemVolumeStepPercent };
         InputBindings input{};
 
         constexpr bool operator==(const SettingData&) const = default;
@@ -54,6 +65,20 @@ namespace media
         }
     }
 
+    [[nodiscard]] constexpr bool IsValidWheelAction(WheelAction action) noexcept
+    {
+        switch (action)
+        {
+        case WheelAction::None:
+        case WheelAction::SwitchTrack:
+        case WheelAction::SwitchMediaSession:
+        case WheelAction::AdjustSystemVolume:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     [[nodiscard]] constexpr int ClampTitleWidth(int width) noexcept
     {
         if (width < kMinimumTitleWidth)
@@ -67,6 +92,19 @@ namespace media
         return width;
     }
 
+    [[nodiscard]] constexpr int ClampSystemVolumeStepPercent(int step_percent) noexcept
+    {
+        if (step_percent < kMinimumSystemVolumeStepPercent)
+        {
+            return kMinimumSystemVolumeStepPercent;
+        }
+        if (step_percent > kMaximumSystemVolumeStepPercent)
+        {
+            return kMaximumSystemVolumeStepPercent;
+        }
+        return step_percent;
+    }
+
     [[nodiscard]] constexpr MediaControlAction NormalizeAction(
         MediaControlAction action,
         MediaControlAction fallback) noexcept
@@ -74,17 +112,25 @@ namespace media
         return IsValidAction(action) ? action : fallback;
     }
 
+    [[nodiscard]] constexpr WheelAction NormalizeWheelAction(
+        WheelAction action,
+        WheelAction fallback) noexcept
+    {
+        return IsValidWheelAction(action) ? action : fallback;
+    }
+
     [[nodiscard]] constexpr SettingData NormalizeSettings(SettingData settings) noexcept
     {
         const SettingData defaults;
         settings.max_title_width = ClampTitleWidth(settings.max_title_width);
+        settings.system_volume_step_percent = ClampSystemVolumeStepPercent(
+            settings.system_volume_step_percent);
         settings.input.left_click = NormalizeAction(settings.input.left_click, defaults.input.left_click);
         settings.input.left_double_click = NormalizeAction(
             settings.input.left_double_click,
             defaults.input.left_double_click);
         settings.input.right_click = NormalizeAction(settings.input.right_click, defaults.input.right_click);
-        settings.input.wheel_up = NormalizeAction(settings.input.wheel_up, defaults.input.wheel_up);
-        settings.input.wheel_down = NormalizeAction(settings.input.wheel_down, defaults.input.wheel_down);
+        settings.input.wheel = NormalizeWheelAction(settings.input.wheel, defaults.input.wheel);
         return settings;
     }
 
@@ -99,6 +145,22 @@ namespace media
         case MediaControlAction::SkipNext:
             return L"skip_next";
         case MediaControlAction::None:
+        default:
+            return L"none";
+        }
+    }
+
+    [[nodiscard]] constexpr std::wstring_view ToConfigValue(WheelAction action) noexcept
+    {
+        switch (action)
+        {
+        case WheelAction::SwitchTrack:
+            return L"switch_track";
+        case WheelAction::SwitchMediaSession:
+            return L"switch_media_session";
+        case WheelAction::AdjustSystemVolume:
+            return L"adjust_system_volume";
+        case WheelAction::None:
         default:
             return L"none";
         }
@@ -123,6 +185,29 @@ namespace media
         if (value == L"skip_next")
         {
             return MediaControlAction::SkipNext;
+        }
+        return fallback;
+    }
+
+    [[nodiscard]] constexpr WheelAction ParseConfigValue(
+        std::wstring_view value,
+        WheelAction fallback) noexcept
+    {
+        if (value == L"none")
+        {
+            return WheelAction::None;
+        }
+        if (value == L"switch_track")
+        {
+            return WheelAction::SwitchTrack;
+        }
+        if (value == L"switch_media_session")
+        {
+            return WheelAction::SwitchMediaSession;
+        }
+        if (value == L"adjust_system_volume")
+        {
+            return WheelAction::AdjustSystemVolume;
         }
         return fallback;
     }

@@ -3,7 +3,7 @@ param(
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
 
-    [ValidateSet('Win32', 'x64', 'ARM64EC')]
+    [ValidateSet('Win32', 'x86', 'x64', 'ARM64EC')]
     [string]$Platform = 'x64',
 
     [switch]$Verify
@@ -25,25 +25,31 @@ if (-not (Test-Path -LiteralPath $toolchainScript -PathType Leaf)) {
 
 $toolchain = & $toolchainScript
 Write-Output "MSBuild: $($toolchain.MSBuild)"
-Write-Output "构建配置：$Configuration|$Platform"
+$msbuildPlatform = if ($Platform -eq 'x86') { 'Win32' } else { $Platform }
+if ($Platform -eq $msbuildPlatform) {
+    Write-Output "构建配置：$Configuration|$Platform"
+}
+else {
+    Write-Output "构建配置：$Configuration|$Platform (MSBuild: $msbuildPlatform)"
+}
 
 & $toolchain.MSBuild `
     $project `
     '/m' `
     '/t:Build' `
     "/p:Configuration=$Configuration" `
-    "/p:Platform=$Platform" `
+    "/p:Platform=$msbuildPlatform" `
     '/v:minimal'
 
 if ($LASTEXITCODE -ne 0) {
     throw "MSBuild 构建失败，退出码：$LASTEXITCODE；配置：$Configuration|$Platform。"
 }
 
-$outputDirectory = if ($Platform -eq 'Win32') {
+$outputDirectory = if ($msbuildPlatform -eq 'Win32') {
     Join-Path $repositoryRoot "TrafficMonitorMedia\bin\$Configuration"
 }
 else {
-    Join-Path $repositoryRoot "TrafficMonitorMedia\bin\$Platform\$Configuration"
+    Join-Path $repositoryRoot "TrafficMonitorMedia\bin\$msbuildPlatform\$Configuration"
 }
 $dllPath = Join-Path $outputDirectory 'TrafficMonitorMedia.dll'
 

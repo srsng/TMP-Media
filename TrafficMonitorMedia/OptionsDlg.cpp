@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "TrafficMonitorMedia.h"
 #include "OptionsDlg.h"
 
@@ -23,10 +23,18 @@ void COptionsDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Check(pDX, IDC_SMOOTH_COVER_SCALING_CHECK, m_smooth_cover_scaling);
     DDX_Text(pDX, IDC_MAX_TITLE_WIDTH_EDIT, m_max_title_width);
     DDV_MinMaxInt(pDX, m_max_title_width, media::kMinimumTitleWidth, media::kMaximumTitleWidth);
+    DDX_Text(pDX, IDC_SYSTEM_VOLUME_STEP_EDIT, m_system_volume_step_percent);
+    DDV_MinMaxInt(
+        pDX,
+        m_system_volume_step_percent,
+        media::kMinimumSystemVolumeStepPercent,
+        media::kMaximumSystemVolumeStepPercent);
     DDX_Control(pDX, IDC_MAX_TITLE_WIDTH_SPIN, m_max_title_width_spin);
+    DDX_Control(pDX, IDC_SYSTEM_VOLUME_STEP_SPIN, m_system_volume_step_spin);
     DDX_Control(pDX, IDC_LEFT_CLICK_ACTION_COMBO, m_left_click_combo);
     DDX_Control(pDX, IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO, m_left_double_click_combo);
     DDX_Control(pDX, IDC_RIGHT_CLICK_ACTION_COMBO, m_right_click_combo);
+    DDX_Control(pDX, IDC_WHEEL_ACTION_COMBO, m_wheel_action_combo);
 }
 
 BEGIN_MESSAGE_MAP(COptionsDlg, CDialog)
@@ -43,18 +51,25 @@ BOOL COptionsDlg::OnInitDialog()
     m_show_cover_background = m_data.show_cover_background ? TRUE : FALSE;
     m_smooth_cover_scaling = m_data.smooth_cover_scaling ? TRUE : FALSE;
     m_max_title_width = m_data.max_title_width;
+    m_system_volume_step_percent = m_data.system_volume_step_percent;
     UpdateData(FALSE);
 
     m_max_title_width_spin.SetRange32(media::kMinimumTitleWidth, media::kMaximumTitleWidth);
     m_max_title_width_spin.SetBuddy(GetDlgItem(IDC_MAX_TITLE_WIDTH_EDIT));
+    m_system_volume_step_spin.SetRange32(
+        media::kMinimumSystemVolumeStepPercent,
+        media::kMaximumSystemVolumeStepPercent);
+    m_system_volume_step_spin.SetBuddy(GetDlgItem(IDC_SYSTEM_VOLUME_STEP_EDIT));
 
     FillActionCombo(m_left_click_combo);
     FillActionCombo(m_left_double_click_combo);
     FillActionCombo(m_right_click_combo);
+    FillWheelActionCombo(m_wheel_action_combo);
 
     SelectAction(m_left_click_combo, m_data.input.left_click);
     SelectAction(m_left_double_click_combo, m_data.input.left_double_click);
     SelectAction(m_right_click_combo, m_data.input.right_click);
+    SelectWheelAction(m_wheel_action_combo, m_data.input.wheel);
 
     return TRUE;
 }
@@ -73,11 +88,13 @@ void COptionsDlg::OnOK()
     updated.show_cover_background = m_show_cover_background != FALSE;
     updated.smooth_cover_scaling = m_smooth_cover_scaling != FALSE;
     updated.max_title_width = m_max_title_width;
+    updated.system_volume_step_percent = m_system_volume_step_percent;
     updated.input.left_click = ReadAction(m_left_click_combo, updated.input.left_click);
     updated.input.left_double_click = ReadAction(
         m_left_double_click_combo,
         updated.input.left_double_click);
     updated.input.right_click = ReadAction(m_right_click_combo, updated.input.right_click);
+    updated.input.wheel = ReadWheelAction(m_wheel_action_combo, updated.input.wheel);
     m_data = media::NormalizeSettings(updated);
 
     CDialog::OnOK();
@@ -103,7 +120,40 @@ void COptionsDlg::FillActionCombo(CComboBox& combo)
     }
 }
 
+void COptionsDlg::FillWheelActionCombo(CComboBox& combo)
+{
+    const std::array actions{
+        std::pair{ IDS_WHEEL_ACTION_NONE, media::WheelAction::None },
+        std::pair{ IDS_WHEEL_ACTION_SWITCH_TRACK, media::WheelAction::SwitchTrack },
+        std::pair{ IDS_WHEEL_ACTION_SWITCH_SESSION, media::WheelAction::SwitchMediaSession },
+        std::pair{ IDS_WHEEL_ACTION_ADJUST_VOLUME, media::WheelAction::AdjustSystemVolume },
+    };
+
+    combo.ResetContent();
+    for (const auto& [string_id, action] : actions)
+    {
+        const int index = combo.AddString(g_plugin.StringRes(string_id));
+        if (index != CB_ERR && index != CB_ERRSPACE)
+        {
+            combo.SetItemData(index, static_cast<DWORD_PTR>(action));
+        }
+    }
+}
+
 void COptionsDlg::SelectAction(CComboBox& combo, media::MediaControlAction action)
+{
+    for (int index = 0; index < combo.GetCount(); ++index)
+    {
+        if (combo.GetItemData(index) == static_cast<DWORD_PTR>(action))
+        {
+            combo.SetCurSel(index);
+            return;
+        }
+    }
+    combo.SetCurSel(0);
+}
+
+void COptionsDlg::SelectWheelAction(CComboBox& combo, media::WheelAction action)
 {
     for (int index = 0; index < combo.GetCount(); ++index)
     {
@@ -131,5 +181,29 @@ media::MediaControlAction COptionsDlg::ReadAction(
     {
         return fallback;
     }
-    return media::NormalizeAction(static_cast<media::MediaControlAction>(item_data), fallback);
+
+    return media::NormalizeAction(
+        static_cast<media::MediaControlAction>(item_data),
+        fallback);
+}
+
+media::WheelAction COptionsDlg::ReadWheelAction(
+    const CComboBox& combo,
+    media::WheelAction fallback)
+{
+    const int index = combo.GetCurSel();
+    if (index == CB_ERR)
+    {
+        return fallback;
+    }
+
+    const DWORD_PTR item_data = combo.GetItemData(index);
+    if (item_data == static_cast<DWORD_PTR>(CB_ERR))
+    {
+        return fallback;
+    }
+
+    return media::NormalizeWheelAction(
+        static_cast<media::WheelAction>(item_data),
+        fallback);
 }

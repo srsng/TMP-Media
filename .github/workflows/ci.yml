@@ -15,24 +15,36 @@ concurrency:
 
 jobs:
   build:
-    name: "${{ matrix.configuration }} | ${{ matrix.platform }}"
+    name: "${{ matrix.configuration }} | ${{ matrix.artifact_arch }}"
     runs-on: windows-2025-vs2026
     strategy:
       fail-fast: false
       matrix:
         include:
           - configuration: Debug
-            platform: Win32
+            platform: x86
+            artifact_arch: x86
             dll_path: TrafficMonitorMedia/bin/Debug/TrafficMonitorMedia.dll
           - configuration: Debug
             platform: x64
+            artifact_arch: x64
             dll_path: TrafficMonitorMedia/bin/x64/Debug/TrafficMonitorMedia.dll
+          - configuration: Debug
+            platform: ARM64EC
+            artifact_arch: arm64ec
+            dll_path: TrafficMonitorMedia/bin/ARM64EC/Debug/TrafficMonitorMedia.dll
           - configuration: Release
-            platform: Win32
+            platform: x86
+            artifact_arch: x86
             dll_path: TrafficMonitorMedia/bin/Release/TrafficMonitorMedia.dll
           - configuration: Release
             platform: x64
+            artifact_arch: x64
             dll_path: TrafficMonitorMedia/bin/x64/Release/TrafficMonitorMedia.dll
+          - configuration: Release
+            platform: ARM64EC
+            artifact_arch: arm64ec
+            dll_path: TrafficMonitorMedia/bin/ARM64EC/Release/TrafficMonitorMedia.dll
 
     steps:
       - name: Checkout
@@ -52,7 +64,7 @@ jobs:
         if: matrix.configuration == 'Release'
         uses: actions/upload-artifact@v7
         with:
-          name: TrafficMonitorMedia-${{ matrix.platform }}-Release
+          name: TrafficMonitorMedia-${{ matrix.artifact_arch }}-Release
           path: ${{ matrix.dll_path }}
           if-no-files-found: error
           retention-days: 7

@@ -2,6 +2,7 @@
 #include "..\include\PluginInterface.h"
 #include "MediaSessionService.h"
 #include "MediaSettings.h"
+#include "SystemVolumeService.h"
 #include "TrafficMonitorMediaItem.h"
 #include <map>
 #include <mutex>
@@ -35,6 +36,7 @@ public:
     void RequestImmediateAction(media::MediaControlAction action);
     void RequestSingleClick(media::MediaControlAction action);
     void RequestDoubleClick(media::MediaControlAction action);
+    void RequestAdjustSystemVolume(float delta);
 
 private:
     void LoadConfig(const std::wstring& config_dir);
@@ -44,6 +46,7 @@ private:
     static CTrafficMonitorMedia m_instance;
     CTrafficMonitorMediaItem m_item;
     CMediaSessionService m_media_service;
+    CSystemVolumeService m_system_volume_service;
     std::wstring m_tooltip_info;
     std::wstring m_config_path;
     std::map<UINT, CString> m_string_table;

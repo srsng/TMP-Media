@@ -104,6 +104,15 @@ namespace
         return value ? media::ParseConfigValue(*value, fallback) : fallback;
     }
 
+    media::WheelAction ReadProfileWheelAction(
+        const std::wstring& path,
+        const wchar_t* key,
+        media::WheelAction fallback)
+    {
+        const auto value = ReadProfileValue(path, kInputSection, key);
+        return value ? media::ParseConfigValue(*value, fallback) : fallback;
+    }
+
     void WriteProfileValue(
         const std::wstring& path,
         const wchar_t* section,
@@ -124,6 +133,7 @@ CTrafficMonitorMedia::CTrafficMonitorMedia()
 
 CTrafficMonitorMedia::~CTrafficMonitorMedia()
 {
+    m_system_volume_service.Stop();
     m_media_service.Stop();
     SaveConfig(GetSettingsSnapshot());
 }
@@ -195,7 +205,7 @@ const wchar_t* CTrafficMonitorMedia::GetInfo(PluginInfoIndex index)
     case TMI_URL:
         return L"https://github.com/srsng/TMP-Media";
     case TMI_VERSION:
-        return L"1.0.1";
+        return L"1.0.2";
     default:
         return L"";
     }
@@ -207,6 +217,7 @@ void CTrafficMonitorMedia::OnInitialize(ITrafficMonitor* pApp)
     LoadConfig(pApp->GetPluginConfigDir());
     m_media_service.SetCoverBackgroundEnabled(GetSettingsSnapshot().show_cover_background);
     m_media_service.Start();
+    m_system_volume_service.Start();
 }
 
 void* CTrafficMonitorMedia::GetPluginIcon()
@@ -251,6 +262,11 @@ void CTrafficMonitorMedia::LoadConfig(const std::wstring& config_dir)
             kDisplaySection,
             L"max_title_width",
             settings.max_title_width);
+        settings.system_volume_step_percent = ReadProfileInt(
+            m_config_path,
+            kInputSection,
+            L"system_volume_step_percent",
+            settings.system_volume_step_percent);
         settings.input.left_click = ReadProfileAction(
             m_config_path,
             L"left_click",
@@ -263,14 +279,10 @@ void CTrafficMonitorMedia::LoadConfig(const std::wstring& config_dir)
             m_config_path,
             L"right_click",
             settings.input.right_click);
-        settings.input.wheel_up = ReadProfileAction(
+        settings.input.wheel = ReadProfileWheelAction(
             m_config_path,
-            L"wheel_up",
-            settings.input.wheel_up);
-        settings.input.wheel_down = ReadProfileAction(
-            m_config_path,
-            L"wheel_down",
-            settings.input.wheel_down);
+            L"wheel",
+            settings.input.wheel);
     }
 
     PublishSettings(media::NormalizeSettings(settings));
@@ -317,6 +329,11 @@ void CTrafficMonitorMedia::SaveConfig(const media::SettingData& settings) const
     WriteProfileValue(
         m_config_path,
         kInputSection,
+        L"system_volume_step_percent",
+        std::to_wstring(normalized.system_volume_step_percent));
+    WriteProfileValue(
+        m_config_path,
+        kInputSection,
         L"left_click",
         media::ToConfigValue(normalized.input.left_click));
     WriteProfileValue(
@@ -332,13 +349,8 @@ void CTrafficMonitorMedia::SaveConfig(const media::SettingData& settings) const
     WriteProfileValue(
         m_config_path,
         kInputSection,
-        L"wheel_up",
-        media::ToConfigValue(normalized.input.wheel_up));
-    WriteProfileValue(
-        m_config_path,
-        kInputSection,
-        L"wheel_down",
-        media::ToConfigValue(normalized.input.wheel_down));
+        L"wheel",
+        media::ToConfigValue(normalized.input.wheel));
 }
 
 media::SettingData CTrafficMonitorMedia::GetSettingsSnapshot() const
@@ -414,6 +426,11 @@ void CTrafficMonitorMedia::RequestSingleClick(media::MediaControlAction action)
 void CTrafficMonitorMedia::RequestDoubleClick(media::MediaControlAction action)
 {
     m_media_service.RequestDoubleClick(action);
+}
+
+void CTrafficMonitorMedia::RequestAdjustSystemVolume(float delta)
+{
+    m_system_volume_service.RequestAdjustLevel(delta);
 }
 
 ITMPlugin* TMPluginGetInstance()

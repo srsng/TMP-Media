@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "MediaSettings.h"
 
 class COptionsDlg : public CDialog
@@ -27,7 +27,12 @@ private:
     static media::MediaControlAction ReadAction(
         const CComboBox& combo,
         media::MediaControlAction fallback);
+    static void SelectWheelAction(CComboBox& combo, media::WheelAction action);
+    static media::WheelAction ReadWheelAction(
+        const CComboBox& combo,
+        media::WheelAction fallback);
     void FillActionCombo(CComboBox& combo);
+    void FillWheelActionCombo(CComboBox& combo);
 
     BOOL m_show_progress{ TRUE };
     BOOL m_show_status_icon{ TRUE };
@@ -35,8 +40,11 @@ private:
     BOOL m_show_cover_background{ FALSE };
     BOOL m_smooth_cover_scaling{ TRUE };
     int m_max_title_width{ media::kDefaultMaxTitleWidth };
+    int m_system_volume_step_percent{ media::kDefaultSystemVolumeStepPercent };
     CSpinButtonCtrl m_max_title_width_spin;
+    CSpinButtonCtrl m_system_volume_step_spin;
     CComboBox m_left_click_combo;
     CComboBox m_left_double_click_combo;
     CComboBox m_right_click_combo;
+    CComboBox m_wheel_action_combo;
 };

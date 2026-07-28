@@ -15,7 +15,6 @@ namespace
     constexpr int kStatusIconSize96Dpi = 16;
     constexpr int kStatusIconGap96Dpi = 4;
     constexpr int kProgressHeight96Dpi = 2;
-    constexpr int kProgressTopGap96Dpi = 2;
     constexpr BYTE kCoverOverlayAlpha = 136;
 
     class ScopedMemoryDc final
@@ -398,10 +397,21 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
     const int progress_height = show_timeline
         ? (std::max)(1, g_plugin.DPI(kProgressHeight96Dpi))
         : 0;
-    const int progress_gap = show_timeline
-        ? g_plugin.DPI(kProgressTopGap96Dpi)
-        : 0;
-    const int content_height = (std::max)(0, h - progress_height - progress_gap);
+    const int content_height = (std::max)(0, h);
+
+    if (show_timeline && w > 0 && progress_height > 0)
+    {
+        const double progress = std::clamp(snapshot.progress_fraction, 0.0, 1.0);
+        const int progress_width = static_cast<int>(std::lround(static_cast<double>(w) * progress));
+        const int progress_y = y + h - progress_height;
+        pDC->FillSolidRect(x, progress_y, w, progress_height,
+            effective_dark_mode ? RGB(88, 88, 88) : RGB(205, 205, 205));
+        if (progress_width > 0)
+        {
+            pDC->FillSolidRect(x, progress_y, progress_width, progress_height,
+                effective_dark_mode ? RGB(80, 170, 255) : RGB(0, 100, 210));
+        }
+    }
 
     if (settings.show_status_icon)
     {
@@ -488,20 +498,6 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
 
     pDC->SetBkMode(old_background_mode);
     pDC->SetTextColor(old_text_color);
-
-    if (show_timeline && w > 0 && progress_height > 0)
-    {
-        const double progress = std::clamp(snapshot.progress_fraction, 0.0, 1.0);
-        const int progress_width = static_cast<int>(std::lround(static_cast<double>(w) * progress));
-        const int progress_y = y + h - progress_height;
-        pDC->FillSolidRect(x, progress_y, w, progress_height,
-            effective_dark_mode ? RGB(88, 88, 88) : RGB(205, 205, 205));
-        if (progress_width > 0)
-        {
-            pDC->FillSolidRect(x, progress_y, progress_width, progress_height,
-                effective_dark_mode ? RGB(80, 170, 255) : RGB(0, 100, 210));
-        }
-    }
 }
 
 int CTrafficMonitorMediaItem::OnMouseEvent(
@@ -517,21 +513,45 @@ int CTrafficMonitorMediaItem::OnMouseEvent(
     }
 
     const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
+    const media::SettingData settings = g_plugin.GetSettingsSnapshot();
     if (type == MT_WHEEL_UP || type == MT_WHEEL_DOWN)
     {
-        if (!snapshot.can_switch_session)
+        switch (settings.input.wheel)
         {
+        case media::WheelAction::None:
+            return 0;
+        case media::WheelAction::SwitchTrack:
+        {
+            const media::MediaControlAction wheel_action = type == MT_WHEEL_UP
+                ? media::MediaControlAction::SkipPrevious
+                : media::MediaControlAction::SkipNext;
+            g_plugin.RequestImmediateAction(wheel_action);
+            return 1;
+        }
+        case media::WheelAction::SwitchMediaSession:
+        {
+            if (!snapshot.can_switch_session)
+            {
+                return 0;
+            }
+
+            const media::SessionSwitchDirection direction = type == MT_WHEEL_UP
+                ? media::SessionSwitchDirection::Previous
+                : media::SessionSwitchDirection::Next;
+            g_plugin.RequestSwitchSession(direction);
+            return 1;
+        }
+        case media::WheelAction::AdjustSystemVolume:
+        {
+            const float delta = static_cast<float>(settings.system_volume_step_percent) / 100.0F;
+            g_plugin.RequestAdjustSystemVolume(type == MT_WHEEL_UP ? delta : -delta);
+            return 1;
+        }
+        default:
             return 0;
         }
-
-        const media::SessionSwitchDirection direction = type == MT_WHEEL_UP
-            ? media::SessionSwitchDirection::Previous
-            : media::SessionSwitchDirection::Next;
-        g_plugin.RequestSwitchSession(direction);
-        return 1;
     }
 
-    const media::SettingData settings = g_plugin.GetSettingsSnapshot();
     media::MediaControlAction action = media::MediaControlAction::None;
 
     switch (type)

@@ -8,6 +8,9 @@
 *.VC.VC.opendb
 *.ipch
 
+# Visual Studio generated resource cache
+*.aps
+
 # MSBuild and C++ intermediate files
 [Dd]ebug/
 [Rr]elease/

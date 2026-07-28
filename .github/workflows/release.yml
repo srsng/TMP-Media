@@ -20,18 +20,21 @@ concurrency:
 
 jobs:
   build:
-    name: "Build | ${{ matrix.platform }}"
+    name: "Build | ${{ matrix.package_arch }}"
     runs-on: windows-2025-vs2026
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: Win32
-            package_arch: win32
+          - platform: x86
+            package_arch: x86
             dll_path: TrafficMonitorMedia/bin/Release/TrafficMonitorMedia.dll
           - platform: x64
             package_arch: x64
             dll_path: TrafficMonitorMedia/bin/x64/Release/TrafficMonitorMedia.dll
+          - platform: ARM64EC
+            package_arch: arm64ec
+            dll_path: TrafficMonitorMedia/bin/ARM64EC/Release/TrafficMonitorMedia.dll
 
     steps:
       - name: Checkout release tag
@@ -134,8 +137,8 @@ jobs:
         shell: bash
         run: |
           mapfile -t packages < <(find release-assets -maxdepth 1 -type f -name '*.zip' -print | sort)
-          if [[ ${#packages[@]} -ne 2 ]]; then
-            echo "Expected 2 release packages, found ${#packages[@]}." >&2
+          if [[ ${#packages[@]} -ne 3 ]]; then
+            echo "Expected 3 release packages, found ${#packages[@]}." >&2
             printf '%s\n' "${packages[@]}" >&2
             exit 1
           fi
