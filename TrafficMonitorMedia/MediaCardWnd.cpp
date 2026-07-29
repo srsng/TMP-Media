@@ -289,13 +289,35 @@ BOOL CMediaCardWnd::Create(CWnd* owner, const CRect& rect)
         nullptr,
         nullptr);
     return CreateEx(
-        WS_EX_TOOLWINDOW | WS_EX_TOPMOST,
+        WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_LAYERED,
         class_name,
         L"",
         WS_POPUP | WS_BORDER,
         rect,
         owner,
         0);
+}
+
+void CMediaCardWnd::ApplyAnimationFrame(BYTE alpha, const CRect& rect)
+{
+    if (!GetSafeHwnd())
+    {
+        return;
+    }
+
+    SetLayeredWindowAttributes(0, alpha, LWA_ALPHA);
+    SetWindowPos(
+        &wndTop,
+        rect.left,
+        rect.top,
+        rect.Width(),
+        rect.Height(),
+        SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+}
+
+void CMediaCardWnd::SetInteractionEnabled(bool enabled) noexcept
+{
+    m_interaction_enabled = enabled;
 }
 
 int CMediaCardWnd::OnCreate(LPCREATESTRUCT create_struct)
@@ -363,6 +385,10 @@ void CMediaCardWnd::OnTimer(UINT_PTR timer_id)
 
 void CMediaCardWnd::OnKeyDown(UINT character, UINT repeat_count, UINT flags)
 {
+    if (!m_interaction_enabled)
+    {
+        return;
+    }
     if (character == VK_ESCAPE && m_manager != nullptr)
     {
         m_manager->Close();
@@ -697,6 +723,10 @@ double CMediaCardWnd::ProgressFractionAt(CPoint point) const
 
 void CMediaCardWnd::OnLButtonDown(UINT flags, CPoint point)
 {
+    if (!m_interaction_enabled)
+    {
+        return;
+    }
     SetFocus();
     if (m_layout.switch_previous.PtInRect(point) && m_snapshot.can_switch_session)
     {
@@ -738,6 +768,10 @@ void CMediaCardWnd::OnLButtonDown(UINT flags, CPoint point)
 
 void CMediaCardWnd::OnMouseMove(UINT flags, CPoint point)
 {
+    if (!m_interaction_enabled)
+    {
+        return;
+    }
     if (m_dragging_progress)
     {
         m_preview_fraction = ProgressFractionAt(point);
@@ -749,6 +783,10 @@ void CMediaCardWnd::OnMouseMove(UINT flags, CPoint point)
 
 void CMediaCardWnd::OnLButtonUp(UINT flags, CPoint point)
 {
+    if (!m_interaction_enabled)
+    {
+        return;
+    }
     if (m_dragging_progress)
     {
         m_preview_fraction = ProgressFractionAt(point);

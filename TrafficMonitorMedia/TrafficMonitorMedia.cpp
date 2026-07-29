@@ -133,7 +133,7 @@ CTrafficMonitorMedia::CTrafficMonitorMedia()
 
 CTrafficMonitorMedia::~CTrafficMonitorMedia()
 {
-    m_media_card_manager.Close();
+    m_media_card_manager.ForceClose();
     m_system_volume_service.Stop();
     m_media_service.Stop();
     SaveConfig(GetSettingsSnapshot());
@@ -444,9 +444,17 @@ void CTrafficMonitorMedia::RequestAdjustSystemVolume(float delta)
     m_system_volume_service.RequestAdjustLevel(delta);
 }
 
-void CTrafficMonitorMedia::ScheduleOpenMediaCard(HWND anchor_window, int client_x, int client_y)
+void CTrafficMonitorMedia::ScheduleOpenMediaCard(
+    HWND anchor_window,
+    int client_x,
+    int client_y,
+    unsigned int confirmation_delay_milliseconds)
 {
-    m_media_card_manager.ScheduleOpen(anchor_window, client_x, client_y);
+    m_media_card_manager.ScheduleOpen(
+        anchor_window,
+        client_x,
+        client_y,
+        confirmation_delay_milliseconds);
 }
 
 void CTrafficMonitorMedia::OpenMediaCard(HWND anchor_window, int client_x, int client_y)

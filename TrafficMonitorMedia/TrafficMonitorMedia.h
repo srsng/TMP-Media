@@ -38,7 +38,11 @@ public:
     void RequestSingleClick(media::MediaControlAction action);
     void RequestDoubleClick(media::MediaControlAction action);
     void RequestAdjustSystemVolume(float delta);
-    void ScheduleOpenMediaCard(HWND anchor_window, int client_x, int client_y);
+    void ScheduleOpenMediaCard(
+        HWND anchor_window,
+        int client_x,
+        int client_y,
+        unsigned int confirmation_delay_milliseconds);
     void OpenMediaCard(HWND anchor_window, int client_x, int client_y);
     void SuppressScheduledMediaCardOpenAfterDoubleClick();
     void CloseMediaCard();

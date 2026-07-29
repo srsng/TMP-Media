@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "TrafficMonitorMediaItem.h"
 #include "TrafficMonitorMedia.h"
+#include "MediaCardInteractionState.h"
 
 #include <algorithm>
 #include <cmath>
@@ -559,7 +560,24 @@ int CTrafficMonitorMediaItem::OnMouseEvent(
         action = settings.input.left_click;
         if (action == media::MediaControlAction::OpenMediaCard)
         {
-            g_plugin.ScheduleOpenMediaCard(static_cast<HWND>(hWnd), x, y);
+            const bool has_left_double_click_action =
+                settings.input.left_double_click != media::MediaControlAction::None;
+            const unsigned int confirmation_delay =
+                media::CalculateMediaCardSingleClickConfirmationDelay(
+                    GetDoubleClickTime(),
+                    has_left_double_click_action);
+            if (confirmation_delay == 0)
+            {
+                g_plugin.OpenMediaCard(static_cast<HWND>(hWnd), x, y);
+            }
+            else
+            {
+                g_plugin.ScheduleOpenMediaCard(
+                    static_cast<HWND>(hWnd),
+                    x,
+                    y,
+                    confirmation_delay);
+            }
             return 1;
         }
         g_plugin.RequestSingleClick(action);

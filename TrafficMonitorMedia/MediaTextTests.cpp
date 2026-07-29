@@ -169,6 +169,40 @@ static_assert(kHeaderChevronIcon.bottom == 61);
 static_assert(!media::ShouldScheduleMediaCardOpen(100, 101));
 static_assert(media::ShouldScheduleMediaCardOpen(101, 101));
 static_assert(media::CalculateMediaCardOpenSuppressionDeadline(100, 500) == 600);
+static_assert(media::CalculateMediaCardSingleClickConfirmationDelay(500, false) == 0);
+static_assert(media::CalculateMediaCardSingleClickConfirmationDelay(200, true) == 200);
+static_assert(media::CalculateMediaCardSingleClickConfirmationDelay(300, true) == 300);
+static_assert(media::CalculateMediaCardSingleClickConfirmationDelay(500, true) == 300);
+
+constexpr media::MediaCardAnimationFrame kOpeningStart =
+    media::CalculateMediaCardAnimationFrame(
+        media::MediaCardAnimationPhase::Opening, 0.0, 8, 5);
+static_assert(kOpeningStart.alpha == 0);
+static_assert(kOpeningStart.offset_y == 8);
+
+constexpr media::MediaCardAnimationFrame kOpeningEnd =
+    media::CalculateMediaCardAnimationFrame(
+        media::MediaCardAnimationPhase::Opening, 1.0, 8, 5);
+static_assert(kOpeningEnd.alpha == 255);
+static_assert(kOpeningEnd.offset_y == 0);
+
+constexpr media::MediaCardAnimationFrame kClosingStart =
+    media::CalculateMediaCardAnimationFrame(
+        media::MediaCardAnimationPhase::Closing, 0.0, 8, 5);
+static_assert(kClosingStart.alpha == 255);
+static_assert(kClosingStart.offset_y == 0);
+
+constexpr media::MediaCardAnimationFrame kClosingEnd =
+    media::CalculateMediaCardAnimationFrame(
+        media::MediaCardAnimationPhase::Closing, 1.0, 8, 5);
+static_assert(kClosingEnd.alpha == 0);
+static_assert(kClosingEnd.offset_y == 5);
+
+constexpr media::MediaCardAnimationFrame kClampedOpening =
+    media::CalculateMediaCardAnimationFrame(
+        media::MediaCardAnimationPhase::Opening, 2.0, 8, 5);
+static_assert(kClampedOpening.alpha == 255);
+static_assert(kClampedOpening.offset_y == 0);
 
 constexpr media::MediaCardLifecycleState kVisibleCardLifecycle{ false, true };
 static_assert(kVisibleCardLifecycle.ShouldHandleUnexpectedCardDestroy());

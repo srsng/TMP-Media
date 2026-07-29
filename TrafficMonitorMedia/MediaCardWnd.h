@@ -12,6 +12,9 @@ public:
 
     BOOL Create(CWnd* owner, const CRect& rect);
     void RefreshSnapshot();
+    void ApplyAnimationFrame(BYTE alpha, const CRect& rect);
+    void SetInteractionEnabled(bool enabled) noexcept;
+    void CancelSeekPreview();
 
 protected:
     afx_msg int OnCreate(LPCREATESTRUCT create_struct);
@@ -55,11 +58,11 @@ private:
         bool enabled,
         bool primary) const;
     void SubmitSeek(double fraction);
-    void CancelSeekPreview();
 
     CMediaCardWindowManager* m_manager{};
     MediaTitleSnapshot m_snapshot;
     Layout m_layout;
     bool m_dragging_progress{};
     double m_preview_fraction{};
+    bool m_interaction_enabled{ true };
 };
