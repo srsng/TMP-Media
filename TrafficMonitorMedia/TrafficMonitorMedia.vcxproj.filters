@@ -30,6 +30,9 @@
     <ClInclude Include="MediaCardInteractionState.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="MediaCardWindowBehavior.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="MediaCardWindowManager.h">
       <Filter>头文件</Filter>
     </ClInclude>

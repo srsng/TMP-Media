@@ -51,7 +51,7 @@ private:
     static void CALLBACK OpenTimerProc(HWND window, UINT message, UINT_PTR timer_id, DWORD time);
     static void CALLBACK AnimationTimerProc(HWND window, UINT message, UINT_PTR timer_id, DWORD time);
     void OpenAtScreenPoint(CPoint anchor_point);
-    void StartAnimation(AnimationKind kind, const CRect& base_rect, int direction_y);
+    void StartAnimation(AnimationKind kind, const CRect& base_rect);
     void AdvanceAnimation();
     void StopAnimation();
     void DestroyCardAndOverlay();

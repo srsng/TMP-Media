@@ -2,6 +2,7 @@
 #include "MediaCardWnd.h"
 
 #include "MediaCardWindowManager.h"
+#include "MediaCardWindowBehavior.h"
 #include "TrafficMonitorMedia.h"
 
 #include <algorithm>
@@ -289,7 +290,7 @@ BOOL CMediaCardWnd::Create(CWnd* owner, const CRect& rect)
         nullptr,
         nullptr);
     return CreateEx(
-        WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_LAYERED,
+        media::kMediaCardWindowExtendedStyle,
         class_name,
         L"",
         WS_POPUP | WS_BORDER,
@@ -307,12 +308,12 @@ void CMediaCardWnd::ApplyAnimationFrame(BYTE alpha, const CRect& rect)
 
     SetLayeredWindowAttributes(0, alpha, LWA_ALPHA);
     SetWindowPos(
-        &wndTop,
+        &wndTopMost,
         rect.left,
         rect.top,
         rect.Width(),
         rect.Height(),
-        SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        media::kMediaCardAnimationPositionFlags);
 }
 
 void CMediaCardWnd::SetInteractionEnabled(bool enabled) noexcept
@@ -727,7 +728,6 @@ void CMediaCardWnd::OnLButtonDown(UINT flags, CPoint point)
     {
         return;
     }
-    SetFocus();
     if (m_layout.switch_previous.PtInRect(point) && m_snapshot.can_switch_session)
     {
         g_plugin.RequestSwitchSession(media::SessionSwitchDirection::Previous);

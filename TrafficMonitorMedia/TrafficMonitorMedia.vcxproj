@@ -256,6 +256,7 @@
   <ItemGroup>
     <ClInclude Include="MediaCardDismissOverlayWnd.h" />
     <ClInclude Include="MediaCardInteractionState.h" />
+    <ClInclude Include="MediaCardWindowBehavior.h" />
     <ClInclude Include="MediaCardWindowManager.h" />
     <ClInclude Include="MediaCardWnd.h" />
     <ClInclude Include="MediaCardVisuals.h" />

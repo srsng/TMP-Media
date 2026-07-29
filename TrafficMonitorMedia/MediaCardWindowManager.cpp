@@ -3,6 +3,7 @@
 
 #include "MediaCardDismissOverlayWnd.h"
 #include "MediaCardInteractionState.h"
+#include "MediaCardWindowBehavior.h"
 #include "MediaCardWnd.h"
 #include "TrafficMonitorMedia.h"
 
@@ -138,15 +139,19 @@ void CMediaCardWindowManager::OpenAtScreenPoint(CPoint anchor_point)
         return;
     }
 
-    m_popup_vertical_direction_y = card_rect.top >= anchor_point.y ? 1 : -1;
     g_plugin.SetMediaCardVisible(true);
     m_card_marked_visible = true;
     m_card->RefreshSnapshot();
     m_card->SetInteractionEnabled(true);
-    StartAnimation(AnimationKind::Opening, card_rect, m_popup_vertical_direction_y);
-    m_card->ShowWindow(SW_SHOW);
-    m_card->BringWindowToTop();
-    m_card->SetForegroundWindow();
+    m_card->ShowWindow(media::kMediaCardShowCommand);
+    m_card->SetWindowPos(
+        &CWnd::wndTopMost,
+        card_rect.left,
+        card_rect.top,
+        card_rect.Width(),
+        card_rect.Height(),
+        media::kMediaCardInitialPositionFlags);
+    StartAnimation(AnimationKind::Opening, card_rect);
 }
 
 void CMediaCardWindowManager::Close()
@@ -166,7 +171,7 @@ void CMediaCardWindowManager::Close()
     m_card->SetInteractionEnabled(false);
     CRect current_rect;
     m_card->GetWindowRect(&current_rect);
-    StartAnimation(AnimationKind::Closing, current_rect, m_popup_vertical_direction_y);
+    StartAnimation(AnimationKind::Closing, current_rect);
 }
 
 void CMediaCardWindowManager::ForceClose()
@@ -193,14 +198,15 @@ bool CMediaCardWindowManager::IsOpen() const noexcept
 
 void CMediaCardWindowManager::StartAnimation(
     AnimationKind kind,
-    const CRect& base_rect,
-    int direction_y)
+    const CRect& base_rect)
 {
     StopAnimation();
     m_animation_kind = kind;
     m_animation_base_rect = base_rect;
     m_animation_started_milliseconds = GetTickCount64();
-    m_popup_vertical_direction_y = direction_y == 0 ? 1 : direction_y;
+    m_popup_vertical_direction_y = kind == AnimationKind::Opening
+        ? media::kMediaCardOpeningVerticalDirectionY
+        : media::kMediaCardClosingVerticalDirectionY;
     m_animation_start_alpha = kind == AnimationKind::Closing ? m_current_alpha : 255;
     m_state = kind == AnimationKind::Opening ? WindowState::Opening : WindowState::Closing;
 

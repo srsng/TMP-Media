@@ -2,11 +2,20 @@
 #include "MediaText.h"
 #include "MediaSessionSelection.h"
 #include "MediaCardInteractionState.h"
+#include "MediaCardWindowBehavior.h"
 #include "MediaCardVisuals.h"
 
 #include <array>
 
 // 纯文本选择逻辑不依赖 TrafficMonitor 或 GSMTC；这些编译期断言是自动回归检查。
+
+// 卡片必须以非激活窗口显示，避免自动隐藏任务栏因插件主动激活而立即收起。
+static_assert((media::kMediaCardWindowExtendedStyle & WS_EX_NOACTIVATE) != 0);
+static_assert(media::kMediaCardShowCommand == SW_SHOWNOACTIVATE);
+static_assert((media::kMediaCardAnimationPositionFlags & SWP_NOACTIVATE) != 0);
+static_assert((media::kMediaCardAnimationPositionFlags & SWP_NOOWNERZORDER) != 0);
+static_assert((media::kMediaCardInitialPositionFlags & SWP_SHOWWINDOW) != 0);
+
 static_assert(media::SelectDisplayText(media::MediaTitleState::Loading, L"", L"") == media::kLoadingMediaText);
 static_assert(media::SelectDisplayText(media::MediaTitleState::Ready, L"Song", L"Player") == L"Song");
 static_assert(media::SelectDisplayText(media::MediaTitleState::Ready, L"", L"Player") == L"Player");
@@ -179,6 +188,8 @@ constexpr media::MediaCardAnimationFrame kOpeningStart =
         media::MediaCardAnimationPhase::Opening, 0.0, 8, 5);
 static_assert(kOpeningStart.alpha == 0);
 static_assert(kOpeningStart.offset_y == 8);
+static_assert(media::kMediaCardOpeningVerticalDirectionY == 1);
+static_assert(media::kMediaCardClosingVerticalDirectionY == 1);
 
 constexpr media::MediaCardAnimationFrame kOpeningEnd =
     media::CalculateMediaCardAnimationFrame(
