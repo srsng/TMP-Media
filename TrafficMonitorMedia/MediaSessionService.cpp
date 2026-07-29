@@ -191,7 +191,7 @@ namespace
     MediaTitleSnapshot ReadSession(
         const GlobalSystemMediaTransportControlsSession& session,
         std::size_t session_count,
-        bool cover_background_enabled,
+        bool need_cover,
         CoverCache& cover_cache)
     {
         if (!session)
@@ -203,12 +203,35 @@ namespace
         MediaTitleSnapshot snapshot;
         snapshot.state = media::MediaTitleState::Ready;
         snapshot.can_switch_session = session_count > 1;
+        snapshot.session_count = session_count;
         snapshot.source_app_id = ToWString(session.SourceAppUserModelId());
+        snapshot.source_app_name = snapshot.source_app_id;
+        snapshot.session_identity = GetSessionIdentity(session);
 
         const auto playback_info = session.GetPlaybackInfo();
         if (playback_info)
         {
             snapshot.playback_state = ToPlaybackState(playback_info.PlaybackStatus());
+            try
+            {
+                const auto controls = playback_info.Controls();
+                if (controls)
+                {
+                    snapshot.can_play_pause = controls.IsPlayPauseToggleEnabled()
+                        || controls.IsPlayEnabled()
+                        || controls.IsPauseEnabled();
+                    snapshot.can_skip_previous = controls.IsPreviousEnabled();
+                    snapshot.can_skip_next = controls.IsNextEnabled();
+                    snapshot.can_seek = controls.IsPlaybackPositionEnabled();
+                }
+            }
+            catch (...)
+            {
+                snapshot.can_play_pause = true;
+                snapshot.can_skip_previous = true;
+                snapshot.can_skip_next = true;
+                snapshot.can_seek = false;
+            }
         }
 
         const auto properties = session.TryGetMediaPropertiesAsync().get();
@@ -217,7 +240,7 @@ namespace
             snapshot.title = ToWString(properties.Title());
             snapshot.artist = ToWString(properties.Artist());
 
-            if (cover_background_enabled)
+            if (need_cover)
             {
                 std::wstring album_title;
                 try
@@ -275,6 +298,9 @@ namespace
             const std::int64_t start = timeline.StartTime().count();
             const std::int64_t end = timeline.EndTime().count();
             const std::int64_t position = timeline.Position().count();
+            snapshot.timeline_start_ticks = start;
+            snapshot.timeline_end_ticks = end;
+            snapshot.position_ticks = media::ClampTimelinePosition(position, start, end);
             snapshot.has_timeline = end > start;
             snapshot.progress_fraction = media::CalculateProgressFraction(position, start, end);
         }
@@ -301,10 +327,50 @@ namespace
         case media::MediaControlAction::SkipNext:
             static_cast<void>(session.TrySkipNextAsync().get());
             break;
+        case media::MediaControlAction::OpenMediaCard:
         case media::MediaControlAction::None:
         default:
             break;
         }
+    }
+
+    bool ExecuteSeekRequest(
+        const GlobalSystemMediaTransportControlsSession& session,
+        std::int64_t requested_position_ticks)
+    {
+        if (!session)
+        {
+            return false;
+        }
+
+        const auto playback_info = session.GetPlaybackInfo();
+        if (!playback_info)
+        {
+            return false;
+        }
+
+        const auto controls = playback_info.Controls();
+        if (!controls || !controls.IsPlaybackPositionEnabled())
+        {
+            return false;
+        }
+
+        const auto timeline = session.GetTimelineProperties();
+        if (!timeline)
+        {
+            return false;
+        }
+
+        const std::int64_t start = timeline.StartTime().count();
+        const std::int64_t end = timeline.EndTime().count();
+        if (end <= start)
+        {
+            return false;
+        }
+
+        const std::int64_t target = media::ClampTimelinePosition(requested_position_ticks, start, end);
+        static_cast<void>(session.TryChangePlaybackPositionAsync(target).get());
+        return true;
     }
 }
 
@@ -324,6 +390,7 @@ void CMediaSessionService::Start()
     m_stop_requested = false;
     m_refresh_requested = true;
     m_session_switch_requests.clear();
+    m_seek_requests.clear();
     m_control_actions.clear();
     m_pending_single_click.reset();
     m_suppress_single_click_until = {};
@@ -342,6 +409,7 @@ void CMediaSessionService::Stop()
         m_stop_requested = true;
         m_refresh_requested = true;
         m_session_switch_requests.clear();
+        m_seek_requests.clear();
         m_control_actions.clear();
         m_pending_single_click.reset();
     }
@@ -383,6 +451,20 @@ void CMediaSessionService::SetCoverBackgroundEnabled(bool enabled)
     m_worker_cv.notify_one();
 }
 
+void CMediaSessionService::SetMediaCardVisible(bool visible)
+{
+    {
+        std::lock_guard<std::mutex> lock(m_worker_mutex);
+        if (m_media_card_visible == visible)
+        {
+            return;
+        }
+        m_media_card_visible = visible;
+        m_refresh_requested = true;
+    }
+    m_worker_cv.notify_one();
+}
+
 void CMediaSessionService::RequestSwitchSession(media::SessionSwitchDirection direction)
 {
     {
@@ -396,9 +478,30 @@ void CMediaSessionService::RequestSwitchSession(media::SessionSwitchDirection di
     m_worker_cv.notify_one();
 }
 
+void CMediaSessionService::RequestSeekToPosition(
+    media::SessionIdentity session_identity,
+    std::int64_t position_ticks)
+{
+    if (session_identity == media::kNoSessionIdentity)
+    {
+        return;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(m_worker_mutex);
+        if (!m_started)
+        {
+            return;
+        }
+        m_seek_requests.push_back({ session_identity, position_ticks });
+    }
+    m_worker_cv.notify_one();
+}
+
 void CMediaSessionService::RequestImmediateAction(media::MediaControlAction action)
 {
-    if (action == media::MediaControlAction::None)
+    if (action == media::MediaControlAction::None
+        || action == media::MediaControlAction::OpenMediaCard)
     {
         return;
     }
@@ -449,7 +552,8 @@ void CMediaSessionService::RequestDoubleClick(media::MediaControlAction action)
         const auto double_click_interval = std::chrono::milliseconds(GetDoubleClickTime());
         m_pending_single_click.reset();
         m_suppress_single_click_until = std::chrono::steady_clock::now() + double_click_interval;
-        if (action != media::MediaControlAction::None)
+        if (action != media::MediaControlAction::None
+            && action != media::MediaControlAction::OpenMediaCard)
         {
             m_control_actions.push_back(action);
         }
@@ -527,18 +631,31 @@ void CMediaSessionService::WorkerLoop()
                 selected_session = resolved.session;
                 manual_selection = resolved.manual_selection;
 
+                if (request.seek.has_value()
+                    && media::IsSeekRequestForSession(
+                        *request.seek,
+                        GetSessionIdentity(selected_session)))
+                {
+                    static_cast<void>(ExecuteSeekRequest(
+                        selected_session,
+                        request.seek->position_ticks));
+                }
+
                 if (request.action != media::MediaControlAction::None)
                 {
                     ExecuteControlAction(selected_session, request.action);
                 }
+
+                const bool need_cover = request.cover_background_enabled || request.media_card_visible;
                 if (request.refresh
                     || request.switch_direction.has_value()
+                    || request.seek.has_value()
                     || request.action != media::MediaControlAction::None)
                 {
                     Publish(ReadSession(
                         selected_session,
                         resolved.count,
-                        request.cover_background_enabled,
+                        need_cover,
                         cover_cache));
                     next_periodic_refresh = std::chrono::steady_clock::now() + kRefreshInterval;
                 }
@@ -572,7 +689,11 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
     {
         if (m_stop_requested)
         {
-            return { .stop = true, .cover_background_enabled = m_cover_background_enabled };
+            return {
+                .stop = true,
+                .cover_background_enabled = m_cover_background_enabled,
+                .media_card_visible = m_media_card_visible,
+            };
         }
 
         if (!m_session_switch_requests.empty())
@@ -580,7 +701,23 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
             const media::SessionSwitchDirection direction = m_session_switch_requests.front();
             m_session_switch_requests.pop_front();
             m_refresh_requested = false;
-            return { .switch_direction = direction, .cover_background_enabled = m_cover_background_enabled };
+            return {
+                .switch_direction = direction,
+                .cover_background_enabled = m_cover_background_enabled,
+                .media_card_visible = m_media_card_visible,
+            };
+        }
+
+        if (!m_seek_requests.empty())
+        {
+            const media::SeekRequest seek = m_seek_requests.front();
+            m_seek_requests.pop_front();
+            m_refresh_requested = false;
+            return {
+                .seek = seek,
+                .cover_background_enabled = m_cover_background_enabled,
+                .media_card_visible = m_media_card_visible,
+            };
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -602,18 +739,30 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
         if (has_queued_action)
         {
             m_control_actions.pop_front();
-            return { .action = action, .cover_background_enabled = m_cover_background_enabled };
+            return {
+                .action = action,
+                .cover_background_enabled = m_cover_background_enabled,
+                .media_card_visible = m_media_card_visible,
+            };
         }
         if (has_matured_single_click)
         {
             m_pending_single_click.reset();
-            return { .action = action, .cover_background_enabled = m_cover_background_enabled };
+            return {
+                .action = action,
+                .cover_background_enabled = m_cover_background_enabled,
+                .media_card_visible = m_media_card_visible,
+            };
         }
 
         if (m_refresh_requested || now >= next_periodic_refresh)
         {
             m_refresh_requested = false;
-            return { .refresh = true, .cover_background_enabled = m_cover_background_enabled };
+            return {
+                .refresh = true,
+                .cover_background_enabled = m_cover_background_enabled,
+                .media_card_visible = m_media_card_visible,
+            };
         }
 
         auto wake_time = next_periodic_refresh;

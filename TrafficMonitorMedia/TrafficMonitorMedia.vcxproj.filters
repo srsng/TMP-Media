@@ -24,6 +24,21 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="MediaCardDismissOverlayWnd.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MediaCardInteractionState.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MediaCardWindowManager.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MediaCardWnd.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="MediaCardVisuals.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="MediaCoverImage.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -57,11 +72,23 @@
     <ClInclude Include="OptionsDlg.h">
       <Filter>对话框</Filter>
     </ClInclude>
+    <ClInclude Include="OptionsLayout.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="resource.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MediaCardDismissOverlayWnd.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MediaCardWindowManager.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MediaCardWnd.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="MediaCoverImage.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -94,6 +121,9 @@
     </ClCompile>
     <ClCompile Include="OptionsDlg.cpp">
       <Filter>对话框</Filter>
+    </ClCompile>
+    <ClCompile Include="OptionsLayoutTests.cpp">
+      <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

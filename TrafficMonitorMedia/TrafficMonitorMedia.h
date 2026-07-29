@@ -1,6 +1,7 @@
 #pragma once
 #include "..\include\PluginInterface.h"
 #include "MediaSessionService.h"
+#include "MediaCardWindowManager.h"
 #include "MediaSettings.h"
 #include "SystemVolumeService.h"
 #include "TrafficMonitorMediaItem.h"
@@ -37,6 +38,12 @@ public:
     void RequestSingleClick(media::MediaControlAction action);
     void RequestDoubleClick(media::MediaControlAction action);
     void RequestAdjustSystemVolume(float delta);
+    void ScheduleOpenMediaCard(HWND anchor_window, int client_x, int client_y);
+    void OpenMediaCard(HWND anchor_window, int client_x, int client_y);
+    void SuppressScheduledMediaCardOpenAfterDoubleClick();
+    void CloseMediaCard();
+    void SetMediaCardVisible(bool visible);
+    void RequestSeekToPosition(media::SessionIdentity session_identity, std::int64_t position_ticks);
 
 private:
     void LoadConfig(const std::wstring& config_dir);
@@ -46,6 +53,7 @@ private:
     static CTrafficMonitorMedia m_instance;
     CTrafficMonitorMediaItem m_item;
     CMediaSessionService m_media_service;
+    CMediaCardWindowManager m_media_card_manager;
     CSystemVolumeService m_system_volume_service;
     std::wstring m_tooltip_info;
     std::wstring m_config_path;

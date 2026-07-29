@@ -59,6 +59,57 @@ namespace media
         };
     }
 
+    struct CoverFitRect
+    {
+        int x{};
+        int y{};
+        int width{};
+        int height{};
+
+        [[nodiscard]] constexpr bool Empty() const noexcept
+        {
+            return width <= 0 || height <= 0;
+        }
+    };
+
+    [[nodiscard]] constexpr CoverFitRect CalculateCoverFitRect(
+        int source_width,
+        int source_height,
+        int target_width,
+        int target_height) noexcept
+    {
+        if (source_width <= 0 || source_height <= 0 || target_width <= 0 || target_height <= 0)
+        {
+            return {};
+        }
+
+        const std::int64_t scaled_width =
+            static_cast<std::int64_t>(source_width) * target_height;
+        const std::int64_t scaled_height =
+            static_cast<std::int64_t>(source_height) * target_width;
+
+        if (scaled_width > scaled_height)
+        {
+            const int height = static_cast<int>(
+                static_cast<std::int64_t>(source_height) * target_width / source_width);
+            return {
+                .x = 0,
+                .y = (target_height - height) / 2,
+                .width = target_width,
+                .height = height > 0 ? height : 1,
+            };
+        }
+
+        const int width = static_cast<int>(
+            static_cast<std::int64_t>(source_width) * target_height / source_height);
+        return {
+            .x = (target_width - width) / 2,
+            .y = 0,
+            .width = width > 0 ? width : 1,
+            .height = target_height,
+        };
+    }
+
     class MediaCoverImage final
     {
     public:

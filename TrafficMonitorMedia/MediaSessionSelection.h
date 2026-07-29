@@ -18,6 +18,20 @@ namespace media
         Next,
     };
 
+    struct SeekRequest
+    {
+        SessionIdentity session_identity{ kNoSessionIdentity };
+        std::int64_t position_ticks{};
+    };
+
+    [[nodiscard]] constexpr bool IsSeekRequestForSession(
+        const SeekRequest& request,
+        SessionIdentity current_session_identity) noexcept
+    {
+        return request.session_identity != kNoSessionIdentity
+            && request.session_identity == current_session_identity;
+    }
+
     struct SessionSelection
     {
         std::size_t selected_index{ kNoSessionIndex };

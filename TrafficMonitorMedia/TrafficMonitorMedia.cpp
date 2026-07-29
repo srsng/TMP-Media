@@ -133,6 +133,7 @@ CTrafficMonitorMedia::CTrafficMonitorMedia()
 
 CTrafficMonitorMedia::~CTrafficMonitorMedia()
 {
+    m_media_card_manager.Close();
     m_system_volume_service.Stop();
     m_media_service.Stop();
     SaveConfig(GetSettingsSnapshot());
@@ -205,7 +206,7 @@ const wchar_t* CTrafficMonitorMedia::GetInfo(PluginInfoIndex index)
     case TMI_URL:
         return L"https://github.com/srsng/TMP-Media";
     case TMI_VERSION:
-        return L"1.0.2";
+        return L"1.0.3";
     default:
         return L"";
     }
@@ -257,6 +258,11 @@ void CTrafficMonitorMedia::LoadConfig(const std::wstring& config_dir)
             kDisplaySection,
             L"smooth_cover_scaling",
             settings.smooth_cover_scaling);
+        settings.min_title_width = ReadProfileInt(
+            m_config_path,
+            kDisplaySection,
+            L"min_title_width",
+            settings.min_title_width);
         settings.max_title_width = ReadProfileInt(
             m_config_path,
             kDisplaySection,
@@ -321,6 +327,11 @@ void CTrafficMonitorMedia::SaveConfig(const media::SettingData& settings) const
         kDisplaySection,
         L"smooth_cover_scaling",
         normalized.smooth_cover_scaling ? L"1" : L"0");
+    WriteProfileValue(
+        m_config_path,
+        kDisplaySection,
+        L"min_title_width",
+        std::to_wstring(normalized.min_title_width));
     WriteProfileValue(
         m_config_path,
         kDisplaySection,
@@ -431,6 +442,38 @@ void CTrafficMonitorMedia::RequestDoubleClick(media::MediaControlAction action)
 void CTrafficMonitorMedia::RequestAdjustSystemVolume(float delta)
 {
     m_system_volume_service.RequestAdjustLevel(delta);
+}
+
+void CTrafficMonitorMedia::ScheduleOpenMediaCard(HWND anchor_window, int client_x, int client_y)
+{
+    m_media_card_manager.ScheduleOpen(anchor_window, client_x, client_y);
+}
+
+void CTrafficMonitorMedia::OpenMediaCard(HWND anchor_window, int client_x, int client_y)
+{
+    m_media_card_manager.Open(anchor_window, client_x, client_y);
+}
+
+void CTrafficMonitorMedia::SuppressScheduledMediaCardOpenAfterDoubleClick()
+{
+    m_media_card_manager.SuppressScheduledOpenAfterDoubleClick();
+}
+
+void CTrafficMonitorMedia::CloseMediaCard()
+{
+    m_media_card_manager.Close();
+}
+
+void CTrafficMonitorMedia::SetMediaCardVisible(bool visible)
+{
+    m_media_service.SetMediaCardVisible(visible);
+}
+
+void CTrafficMonitorMedia::RequestSeekToPosition(
+    media::SessionIdentity session_identity,
+    std::int64_t position_ticks)
+{
+    m_media_service.RequestSeekToPosition(session_identity, position_ticks);
 }
 
 ITMPlugin* TMPluginGetInstance()

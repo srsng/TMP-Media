@@ -11,7 +11,6 @@
 namespace
 {
     constexpr int kHorizontalPadding96Dpi = 8;
-    constexpr int kMinimumWidth96Dpi = 100;
     constexpr int kStatusIconSize96Dpi = 16;
     constexpr int kStatusIconGap96Dpi = 4;
     constexpr int kProgressHeight96Dpi = 2;
@@ -338,7 +337,7 @@ int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
     CDC* pDC = CDC::FromHandle(static_cast<HDC>(hDC));
     if (pDC == nullptr)
     {
-        return g_plugin.DPI(kMinimumWidth96Dpi) + status_icon_width;
+        return g_plugin.DPI(settings.min_title_width) + status_icon_width;
     }
 
     const MediaTitleSnapshot snapshot = g_plugin.GetMediaSnapshot();
@@ -352,7 +351,7 @@ int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
     const std::wstring secondary(lines.secondary);
 
     const int padding = g_plugin.DPI(kHorizontalPadding96Dpi);
-    const int minimum_text_width = g_plugin.DPI(kMinimumWidth96Dpi);
+    const int minimum_text_width = g_plugin.DPI(settings.min_title_width);
     const int maximum_text_width = g_plugin.DPI(settings.max_title_width);
     int measured_text_width = pDC->GetTextExtent(primary.c_str()).cx;
     if (lines.split_lines)
@@ -502,9 +501,9 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
 
 int CTrafficMonitorMediaItem::OnMouseEvent(
     MouseEventType type,
-    int,
-    int,
-    void*,
+    int x,
+    int y,
+    void* hWnd,
     int flag)
 {
     if ((flag & MF_TASKBAR_WND) == 0)
@@ -558,18 +557,38 @@ int CTrafficMonitorMediaItem::OnMouseEvent(
     {
     case MT_LCLICKED:
         action = settings.input.left_click;
+        if (action == media::MediaControlAction::OpenMediaCard)
+        {
+            g_plugin.ScheduleOpenMediaCard(static_cast<HWND>(hWnd), x, y);
+            return 1;
+        }
         g_plugin.RequestSingleClick(action);
         return action != media::MediaControlAction::None ? 1 : 0;
     case MT_DBCLICKED:
+    {
+        g_plugin.SuppressScheduledMediaCardOpenAfterDoubleClick();
         action = settings.input.left_double_click;
-        g_plugin.RequestDoubleClick(action);
+        const media::DoubleClickDispatch dispatch = media::ResolveDoubleClickDispatch(action);
+        g_plugin.RequestDoubleClick(dispatch.media_service_action);
+        if (dispatch.open_media_card)
+        {
+            g_plugin.OpenMediaCard(static_cast<HWND>(hWnd), x, y);
+        }
         return action != media::MediaControlAction::None
             || settings.input.left_click != media::MediaControlAction::None
             ? 1
             : 0;
+    }
     case MT_RCLICKED:
         action = settings.input.right_click;
-        g_plugin.RequestImmediateAction(action);
+        if (action == media::MediaControlAction::OpenMediaCard)
+        {
+            g_plugin.OpenMediaCard(static_cast<HWND>(hWnd), x, y);
+        }
+        else
+        {
+            g_plugin.RequestImmediateAction(action);
+        }
         return action != media::MediaControlAction::None ? 1 : 0;
     default:
         return 0;

@@ -22,10 +22,20 @@ struct MediaTitleSnapshot
     std::wstring title;
     std::wstring artist;
     std::wstring source_app_id;
+    std::wstring source_app_name;
+    media::SessionIdentity session_identity{ media::kNoSessionIdentity };
     std::wstring error_message;
     bool has_timeline{};
+    std::int64_t timeline_start_ticks{};
+    std::int64_t timeline_end_ticks{};
+    std::int64_t position_ticks{};
     double progress_fraction{};
     bool can_switch_session{};
+    std::size_t session_count{};
+    bool can_play_pause{};
+    bool can_skip_previous{};
+    bool can_skip_next{};
+    bool can_seek{};
     std::shared_ptr<const media::MediaCoverImage> cover;
 };
 
@@ -43,7 +53,9 @@ public:
     void Stop();
     void RequestRefresh();
     void SetCoverBackgroundEnabled(bool enabled);
+    void SetMediaCardVisible(bool visible);
     void RequestSwitchSession(media::SessionSwitchDirection direction);
+    void RequestSeekToPosition(media::SessionIdentity session_identity, std::int64_t position_ticks);
     void RequestImmediateAction(media::MediaControlAction action);
     void RequestSingleClick(media::MediaControlAction action);
     void RequestDoubleClick(media::MediaControlAction action);
@@ -58,8 +70,10 @@ private:
         bool stop{};
         bool refresh{};
         std::optional<media::SessionSwitchDirection> switch_direction;
+        std::optional<media::SeekRequest> seek;
         media::MediaControlAction action{ media::MediaControlAction::None };
         bool cover_background_enabled{};
+        bool media_card_visible{};
     };
 
     struct PendingSingleClick
@@ -79,6 +93,7 @@ private:
     std::condition_variable m_worker_cv;
     std::thread m_worker;
     std::deque<media::SessionSwitchDirection> m_session_switch_requests;
+    std::deque<media::SeekRequest> m_seek_requests;
 
     std::deque<media::MediaControlAction> m_control_actions;
     std::optional<PendingSingleClick> m_pending_single_click;
@@ -87,4 +102,5 @@ private:
     bool m_stop_requested{};
     bool m_refresh_requested{};
     bool m_cover_background_enabled{};
+    bool m_media_card_visible{};
 };

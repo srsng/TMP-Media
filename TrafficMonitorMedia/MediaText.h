@@ -132,11 +132,113 @@ namespace media
         return static_cast<double>(position - start) / static_cast<double>(end - start);
     }
 
+    [[nodiscard]] constexpr std::int64_t ClampTimelinePosition(
+        std::int64_t position,
+        std::int64_t start,
+        std::int64_t end) noexcept
+    {
+        if (end < start)
+        {
+            return start;
+        }
+        if (position < start)
+        {
+            return start;
+        }
+        if (position > end)
+        {
+            return end;
+        }
+        return position;
+    }
+
+    [[nodiscard]] constexpr std::int64_t PositionFromProgressFraction(
+        double fraction,
+        std::int64_t start,
+        std::int64_t end) noexcept
+    {
+        if (end <= start || fraction <= 0.0)
+        {
+            return start;
+        }
+        if (fraction >= 1.0)
+        {
+            return end;
+        }
+        return start + static_cast<std::int64_t>(
+            static_cast<double>(end - start) * fraction);
+    }
+
+    struct PixelRect
+    {
+        int left{};
+        int top{};
+        int right{};
+        int bottom{};
+    };
+
+    struct PopupPlacement
+    {
+        int x{};
+        int y{};
+    };
+
+    [[nodiscard]] constexpr PopupPlacement CalculatePopupPlacement(
+        int anchor_x,
+        int anchor_y,
+        int popup_width,
+        int popup_height,
+        int gap,
+        PixelRect work_area) noexcept
+    {
+        const int maximum_x = work_area.right - popup_width;
+        const int maximum_y = work_area.bottom - popup_height;
+        int x = anchor_x;
+        if (x < work_area.left)
+        {
+            x = work_area.left;
+        }
+        else if (x > maximum_x)
+        {
+            x = maximum_x;
+        }
+
+        int y = anchor_y - popup_height - gap;
+        if (y < work_area.top)
+        {
+            y = anchor_y + gap;
+        }
+        if (y < work_area.top)
+        {
+            y = work_area.top;
+        }
+        else if (y > maximum_y)
+        {
+            y = maximum_y;
+        }
+        return { x, y };
+    }
+
     [[nodiscard]] constexpr bool ShouldScheduleSingleClick(
         MediaControlAction action,
         bool suppression_active) noexcept
     {
         return action != MediaControlAction::None && !suppression_active;
+    }
+
+    struct DoubleClickDispatch
+    {
+        MediaControlAction media_service_action{ MediaControlAction::None };
+        bool open_media_card{};
+    };
+
+    [[nodiscard]] constexpr DoubleClickDispatch ResolveDoubleClickDispatch(
+        MediaControlAction action) noexcept
+    {
+        return {
+            action,
+            action == MediaControlAction::OpenMediaCard,
+        };
     }
 
     // 双击动作（包括“无操作”）优先于已经到期的单击动作。

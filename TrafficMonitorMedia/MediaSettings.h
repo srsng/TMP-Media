@@ -10,6 +10,7 @@ namespace media
         TogglePlayPause,
         SkipPrevious,
         SkipNext,
+        OpenMediaCard,
     };
 
     enum class WheelAction
@@ -21,16 +22,17 @@ namespace media
     };
 
     inline constexpr int kMinimumTitleWidth = 100;
+    inline constexpr int kDefaultMinTitleWidth = 100;
     inline constexpr int kDefaultMaxTitleWidth = 400;
     inline constexpr int kMaximumTitleWidth = 1000;
     inline constexpr int kMinimumSystemVolumeStepPercent = 1;
-    inline constexpr int kDefaultSystemVolumeStepPercent = 5;
+    inline constexpr int kDefaultSystemVolumeStepPercent = 4;
     inline constexpr int kMaximumSystemVolumeStepPercent = 50;
 
     struct InputBindings
     {
-        MediaControlAction left_click{ MediaControlAction::TogglePlayPause };
-        MediaControlAction left_double_click{ MediaControlAction::SkipNext };
+        MediaControlAction left_click{ MediaControlAction::OpenMediaCard };
+        MediaControlAction left_double_click{ MediaControlAction::TogglePlayPause };
         MediaControlAction right_click{ MediaControlAction::None };
         WheelAction wheel{ WheelAction::SwitchMediaSession };
 
@@ -44,6 +46,7 @@ namespace media
         bool show_artist_on_second_line{ true };
         bool show_cover_background{ false };
         bool smooth_cover_scaling{ true };
+        int min_title_width{ kDefaultMinTitleWidth };
         int max_title_width{ kDefaultMaxTitleWidth };
         int system_volume_step_percent{ kDefaultSystemVolumeStepPercent };
         InputBindings input{};
@@ -59,6 +62,7 @@ namespace media
         case MediaControlAction::TogglePlayPause:
         case MediaControlAction::SkipPrevious:
         case MediaControlAction::SkipNext:
+        case MediaControlAction::OpenMediaCard:
             return true;
         default:
             return false;
@@ -122,7 +126,12 @@ namespace media
     [[nodiscard]] constexpr SettingData NormalizeSettings(SettingData settings) noexcept
     {
         const SettingData defaults;
+        settings.min_title_width = ClampTitleWidth(settings.min_title_width);
         settings.max_title_width = ClampTitleWidth(settings.max_title_width);
+        if (settings.min_title_width > settings.max_title_width)
+        {
+            settings.min_title_width = settings.max_title_width;
+        }
         settings.system_volume_step_percent = ClampSystemVolumeStepPercent(
             settings.system_volume_step_percent);
         settings.input.left_click = NormalizeAction(settings.input.left_click, defaults.input.left_click);
@@ -144,6 +153,8 @@ namespace media
             return L"skip_previous";
         case MediaControlAction::SkipNext:
             return L"skip_next";
+        case MediaControlAction::OpenMediaCard:
+            return L"open_media_card";
         case MediaControlAction::None:
         default:
             return L"none";
@@ -185,6 +196,10 @@ namespace media
         if (value == L"skip_next")
         {
             return MediaControlAction::SkipNext;
+        }
+        if (value == L"open_media_card")
+        {
+            return MediaControlAction::OpenMediaCard;
         }
         return fallback;
     }

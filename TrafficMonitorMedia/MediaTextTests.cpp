@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "MediaText.h"
 #include "MediaSessionSelection.h"
+#include "MediaCardInteractionState.h"
+#include "MediaCardVisuals.h"
 
 #include <array>
 
@@ -69,6 +71,20 @@ static_assert(media::CalculateProgressFraction(40, 10, 130) == 0.25);
 static_assert(media::CalculateProgressFraction(-1, 0, 100) == 0.0);
 static_assert(media::CalculateProgressFraction(150, 0, 100) == 1.0);
 static_assert(media::CalculateProgressFraction(10, 10, 10) == 0.0);
+static_assert(media::ClampTimelinePosition(5, 10, 20) == 10);
+static_assert(media::ClampTimelinePosition(25, 10, 20) == 20);
+static_assert(media::ClampTimelinePosition(15, 10, 20) == 15);
+static_assert(media::PositionFromProgressFraction(0.25, 10, 50) == 20);
+static_assert(media::PositionFromProgressFraction(-1.0, 10, 50) == 10);
+static_assert(media::PositionFromProgressFraction(2.0, 10, 50) == 50);
+constexpr media::PopupPlacement kPopupAboveAnchor = media::CalculatePopupPlacement(
+    900, 1040, 380, 236, 8, media::PixelRect{ 0, 0, 1920, 1080 });
+static_assert(kPopupAboveAnchor.x == 900);
+static_assert(kPopupAboveAnchor.y == 796);
+constexpr media::PopupPlacement kPopupClampedToWorkArea = media::CalculatePopupPlacement(
+    1880, 10, 380, 236, 8, media::PixelRect{ 0, 0, 1920, 1080 });
+static_assert(kPopupClampedToWorkArea.x == 1540);
+static_assert(kPopupClampedToWorkArea.y == 18);
 
 // 图标表达点击后将执行的动作：播放中显示暂停，暂停时显示播放。
 static_assert(media::SelectMediaStatusIcon(
@@ -109,6 +125,63 @@ static_assert(media::ShouldScheduleSingleClick(MediaControlAction::SkipNext, fal
 static_assert(media::ShouldScheduleSingleClick(MediaControlAction::SkipPrevious, false));
 static_assert(!media::ShouldScheduleSingleClick(MediaControlAction::None, false));
 static_assert(!media::ShouldScheduleSingleClick(MediaControlAction::TogglePlayPause, true));
+constexpr media::DoubleClickDispatch kOpenMediaCardDoubleClick =
+    media::ResolveDoubleClickDispatch(MediaControlAction::OpenMediaCard);
+static_assert(kOpenMediaCardDoubleClick.media_service_action == MediaControlAction::OpenMediaCard);
+static_assert(kOpenMediaCardDoubleClick.open_media_card);
+constexpr media::DoubleClickDispatch kPlaybackDoubleClick =
+    media::ResolveDoubleClickDispatch(MediaControlAction::TogglePlayPause);
+static_assert(kPlaybackDoubleClick.media_service_action == MediaControlAction::TogglePlayPause);
+static_assert(!kPlaybackDoubleClick.open_media_card);
+constexpr media::MediaCardIconRect kSmallControlIcon = media::CalculateMediaCardIconRect(
+    media::MediaCardPixelRect{ 100, 50, 130, 80 },
+    18,
+    18,
+    0,
+    0);
+static_assert(kSmallControlIcon.left == 106);
+static_assert(kSmallControlIcon.top == 56);
+static_assert(kSmallControlIcon.right == 124);
+static_assert(kSmallControlIcon.bottom == 74);
+
+constexpr media::MediaCardIconRect kPlayIconWithOpticalOffset = media::CalculateMediaCardIconRect(
+    media::MediaCardPixelRect{ 200, 100, 238, 138 },
+    20,
+    20,
+    1,
+    0);
+static_assert(kPlayIconWithOpticalOffset.left == 210);
+static_assert(kPlayIconWithOpticalOffset.top == 109);
+static_assert(kPlayIconWithOpticalOffset.right == 230);
+static_assert(kPlayIconWithOpticalOffset.bottom == 129);
+
+constexpr media::MediaCardIconRect kHeaderChevronIcon = media::CalculateMediaCardIconRect(
+    media::MediaCardPixelRect{ 300, 40, 326, 66 },
+    16,
+    16,
+    0,
+    0);
+static_assert(kHeaderChevronIcon.left == 305);
+static_assert(kHeaderChevronIcon.top == 45);
+static_assert(kHeaderChevronIcon.right == 321);
+static_assert(kHeaderChevronIcon.bottom == 61);
+
+static_assert(!media::ShouldScheduleMediaCardOpen(100, 101));
+static_assert(media::ShouldScheduleMediaCardOpen(101, 101));
+static_assert(media::CalculateMediaCardOpenSuppressionDeadline(100, 500) == 600);
+
+constexpr media::MediaCardLifecycleState kVisibleCardLifecycle{ false, true };
+static_assert(kVisibleCardLifecycle.ShouldHandleUnexpectedCardDestroy());
+constexpr media::MediaCardLifecycleState kClosingCardLifecycle{ true, true };
+static_assert(!kClosingCardLifecycle.ShouldHandleUnexpectedCardDestroy());
+
+constexpr media::SeekRequest kSeekForSession22{ 22, 45'000'000 };
+static_assert(media::IsSeekRequestForSession(kSeekForSession22, 22));
+static_assert(!media::IsSeekRequestForSession(kSeekForSession22, 33));
+static_assert(!media::IsSeekRequestForSession(
+    media::SeekRequest{ media::kNoSessionIdentity, 45'000'000 },
+    media::kNoSessionIdentity));
+
 constexpr std::array<media::SessionIdentity, 0> kNoSessions{};
 constexpr std::array<media::SessionIdentity, 3> kThreeSessions{ 11, 22, 33 };
 constexpr std::array<media::SessionIdentity, 1> kOneSession{ 11 };

@@ -25,8 +25,8 @@ LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,2,0
- PRODUCTVERSION 1,0,2,0
+ FILEVERSION 1,0,3,0
+ PRODUCTVERSION 1,0,3,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -43,12 +43,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "TMP-media"
             VALUE "FileDescription", "TrafficMonitorMedia Plugin for TrafficMonitor"
-            VALUE "FileVersion", "1.0.2.0"
+            VALUE "FileVersion", "1.0.3.0"
             VALUE "InternalName", "TrafficMonitorMedia.dll"
             VALUE "LegalCopyright", "Copyright (C) TMP-media"
             VALUE "OriginalFilename", "TrafficMonitorMedia.dll"
             VALUE "ProductName", "TrafficMonitorMedia Plugin for TrafficMonitor"
-            VALUE "ProductVersion", "1.0.2.0"
+            VALUE "ProductVersion", "1.0.3.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -111,37 +111,41 @@ END
 // Dialog
 //
 
-IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 317, 232
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 310, 221
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "媒体插件设置"
 FONT 9, "微软雅黑", 400, 0, 0x86
 BEGIN
-    GROUPBOX        "显示",IDC_STATIC,7,7,303,62
-    CONTROL         "显示播放进度条",IDC_SHOW_PROGRESS_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,22,64,10
-    CONTROL         "第二行显示艺术家",IDC_SHOW_ARTIST_SECOND_LINE_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,39,71,10
-    CONTROL         "显示媒体封面背景",IDC_SHOW_COVER_BACKGROUND_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,53,71,10
-    LTEXT           "标题最大宽度：",IDC_STATIC,158,23,49,8
-    EDITTEXT        IDC_MAX_TITLE_WIDTH_EDIT,207,21,45,12,ES_AUTOHSCROLL | ES_NUMBER | NOT WS_BORDER
-    CONTROL         "",IDC_MAX_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_ARROWKEYS,250,21,10,12
-    LTEXT           "逻辑像素",IDC_STATIC,263,23,28,8
-    CONTROL         "显示状态图标",IDC_SHOW_STATUS_ICON_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,158,39,57,10
-    CONTROL         "平滑缩放媒体封面",IDC_SMOOTH_COVER_SCALING_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,158,53,71,10
-    GROUPBOX        "鼠标操作",IDC_STATIC,7,75,303,150
-    LTEXT           "左键单击：",IDC_STATIC,17,92,35,8
-    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,54,90,70,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "左键双击：",IDC_STATIC,17,115,35,8
-    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,54,113,70,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "右键单击：",IDC_STATIC,17,138,35,8
-    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,54,136,71,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "滚轮：",IDC_STATIC,18,166,22,8
-    COMBOBOX        IDC_WHEEL_ACTION_COMBO,53,165,72,70,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "音量步长：",IDC_STATIC,17,184,35,8
-    EDITTEXT        IDC_SYSTEM_VOLUME_STEP_EDIT,54,182,45,15,ES_AUTOHSCROLL | ES_NUMBER
-    CONTROL         "",IDC_SYSTEM_VOLUME_STEP_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_ARROWKEYS,97,182,11,15
-    LTEXT           "%",IDC_STATIC,109,185,8,8
-    LTEXT           "右键设为“无操作”时保留 TrafficMonitor 默认菜单。",IDC_STATIC,17,150,170,8
-    DEFPUSHBUTTON   "确定",IDOK,197,211,50,14
-    PUSHBUTTON      "取消",IDCANCEL,253,211,50,14
+    GROUPBOX        "显示",IDC_DISPLAY_GROUP,7,7,296,82
+    CONTROL         "显示播放进度条",IDC_SHOW_PROGRESS_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,22,105,10
+    CONTROL         "显示状态图标",IDC_SHOW_STATUS_ICON_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,38,105,10
+    CONTROL         "第二行显示艺术家",IDC_SHOW_ARTIST_SECOND_LINE_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,54,110,10
+    CONTROL         "显示媒体封面背景",IDC_SHOW_COVER_BACKGROUND_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,164,22,125,10
+    CONTROL         "平滑缩放媒体封面",IDC_SMOOTH_COVER_SCALING_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,164,38,125,10
+    LTEXT           "标题最小宽度：",IDC_MIN_TITLE_WIDTH_LABEL_STATIC,164,55,60,8
+    EDITTEXT        IDC_MIN_TITLE_WIDTH_EDIT,226,52,34,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_MIN_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS,260,52,10,14
+    LTEXT           "逻辑像素",IDC_MIN_TITLE_WIDTH_UNIT_STATIC,274,55,28,8
+    LTEXT           "标题最大宽度：",IDC_TITLE_WIDTH_LABEL_STATIC,164,71,60,8
+    EDITTEXT        IDC_MAX_TITLE_WIDTH_EDIT,226,68,34,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_MAX_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS,260,68,10,14
+    LTEXT           "逻辑像素",IDC_TITLE_WIDTH_UNIT_STATIC,274,71,28,8
+    GROUPBOX        "鼠标操作",IDC_MOUSE_ACTIONS_GROUP,7,95,296,94
+    LTEXT           "左键单击：",IDC_LEFT_CLICK_LABEL_STATIC,17,112,43,8
+    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,64,109,86,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "左键双击：",IDC_LEFT_DOUBLE_CLICK_LABEL_STATIC,17,133,43,8
+    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,64,130,86,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "右键单击：",IDC_RIGHT_CLICK_LABEL_STATIC,164,112,43,8
+    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,211,109,86,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "滚轮：",IDC_WHEEL_LABEL_STATIC,164,133,43,8
+    COMBOBOX        IDC_WHEEL_ACTION_COMBO,211,130,86,68,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "音量步长：",IDC_SYSTEM_VOLUME_LABEL_STATIC,164,154,43,8
+    EDITTEXT        IDC_SYSTEM_VOLUME_STEP_EDIT,211,151,34,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_SYSTEM_VOLUME_STEP_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS,245,151,10,14
+    LTEXT           "%",IDC_SYSTEM_VOLUME_UNIT_STATIC,259,154,10,8
+    LTEXT           "右键设为“无操作”时保留 TrafficMonitor 默认菜单。",IDC_RIGHT_CLICK_HINT_STATIC,17,175,280,10
+    DEFPUSHBUTTON   "确定",IDOK,193,200,50,14
+    PUSHBUTTON      "取消",IDCANCEL,253,200,50,14
 END
 
 
@@ -156,49 +160,12 @@ BEGIN
     IDD_OPTIONS_DIALOG, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 310
+        RIGHTMARGIN, 303
         TOPMARGIN, 7
-        BOTTOMMARGIN, 225
+        BOTTOMMARGIN, 214
     END
 END
 #endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// AFX_DIALOG_LAYOUT
-//
-
-IDD_OPTIONS_DIALOG AFX_DIALOG_LAYOUT
-BEGIN
-    0,
-    0, 0, 100, 100,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0
-END
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -223,6 +190,7 @@ BEGIN
     IDS_WHEEL_ACTION_SWITCH_TRACK "上一首/下一首"
     IDS_WHEEL_ACTION_SWITCH_SESSION "上一/下一媒体会话"
     IDS_WHEEL_ACTION_ADJUST_VOLUME "增减系统音量"
+    IDS_ACTION_OPEN_MEDIA_CARD "打开媒体卡片"
 END
 
 #endif    // 中文(简体，中国) resources
@@ -241,40 +209,41 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Dialog
 //
 
-IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 360, 232
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_OPTIONS_DIALOG DIALOGEX 0, 0, 350, 221
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
 CAPTION "Media Plugin Settings"
 FONT 9, "Segoe UI", 400, 0, 0x0
 BEGIN
-    GROUPBOX        "Display",IDC_STATIC,7,7,346,62
-    CONTROL         "Show playback progress",IDC_SHOW_PROGRESS_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,22,116,10
-    CONTROL         "Show artist on second line",IDC_SHOW_ARTIST_SECOND_LINE_CHECK,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,39,130,10
-    CONTROL         "Show media cover background",IDC_SHOW_COVER_BACKGROUND_CHECK,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,53,150,10
-    LTEXT           "Maximum title width:",IDC_STATIC,140,23,92,10
-    EDITTEXT        IDC_MAX_TITLE_WIDTH_EDIT,235,21,45,12,ES_AUTOHSCROLL | ES_NUMBER | NOT WS_BORDER
-    CONTROL         "",IDC_MAX_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_ARROWKEYS,278,21,10,12
-    LTEXT           "logical px",IDC_STATIC,291,23,50,9
-    CONTROL         "Show status icon",IDC_SHOW_STATUS_ICON_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,175,39,95,10
-    CONTROL         "Smooth cover scaling",IDC_SMOOTH_COVER_SCALING_CHECK,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,175,53,130,10
-    GROUPBOX        "Mouse Actions",IDC_STATIC,7,75,346,150
-    LTEXT           "Left click:",IDC_STATIC,17,92,68,10
-    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,118,90,135,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Left double-click:",IDC_STATIC,17,115,92,10
-    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,118,113,135,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Right click:",IDC_STATIC,17,138,68,10
-    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,118,136,135,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Mouse wheel:",IDC_STATIC,17,166,92,10
-    COMBOBOX        IDC_WHEEL_ACTION_COMBO,118,165,155,70,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Volume step:",IDC_STATIC,17,184,92,10
-    EDITTEXT        IDC_SYSTEM_VOLUME_STEP_EDIT,118,182,45,15,ES_AUTOHSCROLL | ES_NUMBER
-    CONTROL         "",IDC_SYSTEM_VOLUME_STEP_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_ARROWKEYS,163,182,11,15
-    LTEXT           "%",IDC_STATIC,178,185,10,9
-    LTEXT           "Right click keeps TrafficMonitor's default menu when set to None.",IDC_STATIC,17,150,320,10
-    DEFPUSHBUTTON   "OK",IDOK,253,211,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,303,211,50,14
+    GROUPBOX        "Display",IDC_DISPLAY_GROUP,7,7,336,82
+    CONTROL         "Show playback progress",IDC_SHOW_PROGRESS_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,22,145,10
+    CONTROL         "Show status icon",IDC_SHOW_STATUS_ICON_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,38,145,10
+    CONTROL         "Show artist on second line",IDC_SHOW_ARTIST_SECOND_LINE_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,54,145,10
+    CONTROL         "Show media cover background",IDC_SHOW_COVER_BACKGROUND_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,184,22,150,10
+    CONTROL         "Smooth cover scaling",IDC_SMOOTH_COVER_SCALING_CHECK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,184,38,150,10
+    LTEXT           "Minimum title width:",IDC_MIN_TITLE_WIDTH_LABEL_STATIC,180,55,80,8
+    EDITTEXT        IDC_MIN_TITLE_WIDTH_EDIT,262,52,30,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_MIN_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS,292,52,10,14
+    LTEXT           "logical px",IDC_MIN_TITLE_WIDTH_UNIT_STATIC,306,55,35,8
+    LTEXT           "Maximum title width:",IDC_TITLE_WIDTH_LABEL_STATIC,180,71,80,8
+    EDITTEXT        IDC_MAX_TITLE_WIDTH_EDIT,262,68,30,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_MAX_TITLE_WIDTH_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS,292,68,10,14
+    LTEXT           "logical px",IDC_TITLE_WIDTH_UNIT_STATIC,306,71,35,8
+    GROUPBOX        "Mouse Actions",IDC_MOUSE_ACTIONS_GROUP,7,95,336,94
+    LTEXT           "Left click:",IDC_LEFT_CLICK_LABEL_STATIC,17,112,66,8
+    COMBOBOX        IDC_LEFT_CLICK_ACTION_COMBO,87,109,78,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Left double-click:",IDC_LEFT_DOUBLE_CLICK_LABEL_STATIC,17,133,66,8
+    COMBOBOX        IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO,87,130,78,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Right click:",IDC_RIGHT_CLICK_LABEL_STATIC,184,112,70,8
+    COMBOBOX        IDC_RIGHT_CLICK_ACTION_COMBO,258,109,78,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Mouse wheel:",IDC_WHEEL_LABEL_STATIC,184,133,70,8
+    COMBOBOX        IDC_WHEEL_ACTION_COMBO,258,130,78,68,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Volume step:",IDC_SYSTEM_VOLUME_LABEL_STATIC,184,154,70,8
+    EDITTEXT        IDC_SYSTEM_VOLUME_STEP_EDIT,258,151,34,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_SYSTEM_VOLUME_STEP_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ARROWKEYS,292,151,10,14
+    LTEXT           "%",IDC_SYSTEM_VOLUME_UNIT_STATIC,306,154,10,8
+    LTEXT           "Right click keeps TrafficMonitor's default menu when set to None.",IDC_RIGHT_CLICK_HINT_STATIC,17,175,319,10
+    DEFPUSHBUTTON   "OK",IDOK,233,200,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,293,200,50,14
 END
 
 
@@ -289,48 +258,12 @@ BEGIN
     IDD_OPTIONS_DIALOG, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 353
+        RIGHTMARGIN, 343
         TOPMARGIN, 7
-        BOTTOMMARGIN, 225
+        BOTTOMMARGIN, 214
     END
 END
 #endif    // APSTUDIO_INVOKED
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// AFX_DIALOG_LAYOUT
-//
-
-IDD_OPTIONS_DIALOG AFX_DIALOG_LAYOUT
-BEGIN
-    0,
-    0, 0, 100, 100,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0,
-    0, 0, 0, 0
-END
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -341,7 +274,7 @@ END
 STRINGTABLE
 BEGIN
     IDS_PLUGIN_NAME         "TrafficMonitorMedia"
-    IDS_PLUGIN_DESCRIPTION  "Display the current media info like title and progress in the taskbar window of TM. Allows you play, stop media and other motions by single click and double click the info zone"
+    IDS_PLUGIN_DESCRIPTION  "Display the current media info like title and progress in the taskbar window of TM. Allows playback controls through configurable mouse actions."
     IDS_PLUGIN_ITEM_NAME    "Media title"
 END
 
@@ -355,6 +288,7 @@ BEGIN
     IDS_WHEEL_ACTION_SWITCH_TRACK "Previous/next track"
     IDS_WHEEL_ACTION_SWITCH_SESSION "Previous/next media session"
     IDS_WHEEL_ACTION_ADJUST_VOLUME "Adjust system volume"
+    IDS_ACTION_OPEN_MEDIA_CARD "Open media card"
 END
 
 #endif    // 英语(美国) resources

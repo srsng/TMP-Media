@@ -254,6 +254,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="MediaCardDismissOverlayWnd.h" />
+    <ClInclude Include="MediaCardInteractionState.h" />
+    <ClInclude Include="MediaCardWindowManager.h" />
+    <ClInclude Include="MediaCardWnd.h" />
+    <ClInclude Include="MediaCardVisuals.h" />
     <ClInclude Include="MediaCoverImage.h" />
     <ClInclude Include="MediaSessionSelection.h" />
     <ClInclude Include="MediaSessionService.h" />
@@ -262,12 +267,16 @@
     <ClInclude Include="SystemVolumeService.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="OptionsDlg.h" />
+    <ClInclude Include="OptionsLayout.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="TrafficMonitorMedia.h" />
     <ClInclude Include="TrafficMonitorMediaItem.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MediaCardDismissOverlayWnd.cpp" />
+    <ClCompile Include="MediaCardWindowManager.cpp" />
+    <ClCompile Include="MediaCardWnd.cpp" />
     <ClCompile Include="MediaCoverImage.cpp" />
     <ClCompile Include="MediaCoverImageTests.cpp" />
     <ClCompile Include="MediaSessionService.cpp" />
@@ -276,6 +285,7 @@
     <ClCompile Include="SystemVolumeService.cpp" />
     <ClCompile Include="SystemVolumeServiceTests.cpp" />
     <ClCompile Include="OptionsDlg.cpp" />
+    <ClCompile Include="OptionsLayoutTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
