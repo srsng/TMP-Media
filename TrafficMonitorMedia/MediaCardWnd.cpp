@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MediaCardWnd.h"
 
+#include "MediaCardInteractionState.h"
 #include "MediaCardWindowManager.h"
 #include "MediaCardWindowBehavior.h"
 #include "TrafficMonitorMedia.h"
@@ -13,7 +14,10 @@
 namespace
 {
     constexpr UINT_PTR kRefreshTimerId = 1;
+    constexpr UINT_PTR kDeactivateDismissFallbackTimerId = 2;
     constexpr UINT kRefreshIntervalMilliseconds = 250;
+    constexpr UINT kMediaCardDeferredDeactivateDismissMessage = WM_APP + 1;
+    constexpr UINT kMediaCardVerifyActivationMessage = WM_APP + 2;
 
     int Scale(int value)
     {
@@ -271,6 +275,9 @@ BEGIN_MESSAGE_MAP(CMediaCardWnd, CWnd)
     ON_WM_ERASEBKGND()
     ON_WM_TIMER()
     ON_WM_KEYDOWN()
+    ON_WM_ACTIVATE()
+    ON_MESSAGE(kMediaCardDeferredDeactivateDismissMessage, &CMediaCardWnd::OnDeferredDeactivateDismiss)
+    ON_MESSAGE(kMediaCardVerifyActivationMessage, &CMediaCardWnd::OnVerifyActivation)
     ON_WM_LBUTTONDOWN()
     ON_WM_LBUTTONUP()
     ON_WM_MOUSEMOVE()
@@ -282,8 +289,16 @@ CMediaCardWnd::CMediaCardWnd(CMediaCardWindowManager* manager)
 {
 }
 
-BOOL CMediaCardWnd::Create(CWnd* owner, const CRect& rect)
+BOOL CMediaCardWnd::Create(
+    HWND owner_window,
+    const CRect& rect,
+    std::uintptr_t message_generation)
 {
+    m_has_been_activated = false;
+    m_deactivate_dismiss_posted = false;
+    m_deactivate_dismiss_fallback_pending = false;
+    m_activation_verification_posted = false;
+    m_message_generation = message_generation;
     const CString class_name = AfxRegisterWndClass(
         CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW,
         LoadCursor(nullptr, IDC_ARROW),
@@ -295,8 +310,26 @@ BOOL CMediaCardWnd::Create(CWnd* owner, const CRect& rect)
         L"",
         WS_POPUP | WS_BORDER,
         rect,
-        owner,
+        owner_window == nullptr ? nullptr : CWnd::FromHandle(owner_window),
         0);
+}
+
+bool CMediaCardWnd::HasBeenActivated() const noexcept
+{
+    return m_has_been_activated;
+}
+
+bool CMediaCardWnd::BeginActivationVerification() noexcept
+{
+    if (!GetSafeHwnd() || m_activation_verification_posted)
+    {
+        return GetSafeHwnd() != nullptr;
+    }
+
+    m_activation_verification_posted = PostMessage(
+        kMediaCardVerifyActivationMessage,
+        static_cast<WPARAM>(m_message_generation)) != FALSE;
+    return m_activation_verification_posted;
 }
 
 void CMediaCardWnd::ApplyAnimationFrame(BYTE alpha, const CRect& rect)
@@ -344,6 +377,8 @@ void CMediaCardWnd::OnClose()
 void CMediaCardWnd::OnDestroy()
 {
     KillTimer(kRefreshTimerId);
+    KillTimer(kDeactivateDismissFallbackTimerId);
+    m_deactivate_dismiss_fallback_pending = false;
     CancelSeekPreview();
     CWnd::OnDestroy();
 }
@@ -381,6 +416,17 @@ void CMediaCardWnd::OnTimer(UINT_PTR timer_id)
         RefreshSnapshot();
         return;
     }
+    if (timer_id == kDeactivateDismissFallbackTimerId)
+    {
+        KillTimer(kDeactivateDismissFallbackTimerId);
+        m_deactivate_dismiss_fallback_pending = false;
+        m_deactivate_dismiss_posted = false;
+        if (m_manager != nullptr)
+        {
+            m_manager->OnCardDeactivated(GetSafeHwnd(), m_message_generation);
+        }
+        return;
+    }
     CWnd::OnTimer(timer_id);
 }
 
@@ -396,6 +442,91 @@ void CMediaCardWnd::OnKeyDown(UINT character, UINT repeat_count, UINT flags)
         return;
     }
     CWnd::OnKeyDown(character, repeat_count, flags);
+}
+
+void CMediaCardWnd::OnActivate(UINT state, CWnd* other_window, BOOL minimized)
+{
+    CWnd::OnActivate(state, other_window, minimized);
+
+    const media::MediaCardActivationEvent event = state == WA_ACTIVE
+        ? media::MediaCardActivationEvent::Active
+        : (state == WA_CLICKACTIVE
+            ? media::MediaCardActivationEvent::ClickActive
+            : media::MediaCardActivationEvent::Inactive);
+    const media::MediaCardLifecyclePhase phase = m_interaction_enabled
+        ? media::MediaCardLifecyclePhase::Opening
+        : media::MediaCardLifecyclePhase::Closing;
+    media::MediaCardActivationLifecycle lifecycle{
+        m_has_been_activated,
+        m_deactivate_dismiss_posted,
+        phase,
+    };
+
+    if (lifecycle.ShouldMarkActivated(event))
+    {
+        if (m_deactivate_dismiss_fallback_pending)
+        {
+            KillTimer(kDeactivateDismissFallbackTimerId);
+            m_deactivate_dismiss_fallback_pending = false;
+        }
+        m_has_been_activated = true;
+        m_deactivate_dismiss_posted = false;
+        return;
+    }
+    if (!lifecycle.ShouldPostDeactivateDismiss(event))
+    {
+        return;
+    }
+
+    m_deactivate_dismiss_posted = true;
+    const bool dismiss_message_posted = PostMessage(
+        kMediaCardDeferredDeactivateDismissMessage,
+        static_cast<WPARAM>(m_message_generation)) != FALSE;
+    if (media::ShouldScheduleMediaCardDeactivateFallback(dismiss_message_posted))
+    {
+        // 仍然异步离开 WM_ACTIVATE 调用栈；定时器只作为 PostMessage 失败时的低概率备用路径。
+        m_deactivate_dismiss_fallback_pending =
+            SetTimer(kDeactivateDismissFallbackTimerId, 1, nullptr) != 0;
+    }
+}
+
+LRESULT CMediaCardWnd::OnDeferredDeactivateDismiss(WPARAM generation, LPARAM)
+{
+    if (!media::IsCurrentMediaCardMessageGeneration(
+            static_cast<media::MediaCardMessageGeneration>(generation),
+            m_message_generation))
+    {
+        return 0;
+    }
+
+    if (m_deactivate_dismiss_fallback_pending)
+    {
+        KillTimer(kDeactivateDismissFallbackTimerId);
+        m_deactivate_dismiss_fallback_pending = false;
+    }
+    m_deactivate_dismiss_posted = false;
+    if (m_manager != nullptr)
+    {
+        m_manager->OnCardDeactivated(GetSafeHwnd(), m_message_generation);
+    }
+    return 0;
+}
+
+LRESULT CMediaCardWnd::OnVerifyActivation(WPARAM generation, LPARAM)
+{
+    if (!media::IsCurrentMediaCardMessageGeneration(
+            static_cast<media::MediaCardMessageGeneration>(generation),
+            m_message_generation))
+    {
+        return 0;
+    }
+
+    m_activation_verification_posted = false;
+    if (m_manager != nullptr)
+    {
+        m_manager->OnCardActivationVerification(GetSafeHwnd(), m_message_generation);
+    }
+    return 0;
 }
 
 BOOL CMediaCardWnd::OnEraseBkgnd(CDC*)

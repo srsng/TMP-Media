@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
 namespace media
 {
@@ -84,6 +85,93 @@ namespace media
     {
         return now_milliseconds + double_click_interval_milliseconds;
     }
+
+    [[nodiscard]] constexpr bool IsTrustedMediaCardOwnerClass(
+        std::wstring_view class_name) noexcept
+    {
+        return class_name == L"Shell_TrayWnd"
+            || class_name == L"Shell_SecondaryTrayWnd";
+    }
+
+    using MediaCardMessageGeneration = std::uintptr_t;
+
+    [[nodiscard]] constexpr bool IsCurrentMediaCardMessageGeneration(
+        MediaCardMessageGeneration message_generation,
+        MediaCardMessageGeneration current_generation) noexcept
+    {
+        return message_generation == current_generation;
+    }
+
+    [[nodiscard]] constexpr bool IsMediaCardActivationVerified(
+        bool has_been_activated,
+        bool is_foreground_card) noexcept
+    {
+        return has_been_activated && is_foreground_card;
+    }
+
+    [[nodiscard]] constexpr bool ShouldCompleteMediaCardOpening(
+        bool opening_animation_completed,
+        bool activation_verified) noexcept
+    {
+        return opening_animation_completed && activation_verified;
+    }
+
+    [[nodiscard]] constexpr bool ShouldScheduleMediaCardDeactivateFallback(
+        bool dismiss_message_posted) noexcept
+    {
+        return !dismiss_message_posted;
+    }
+
+    enum class MediaCardLifecyclePhase
+    {
+        Closed,
+        Opening,
+        Open,
+        Closing,
+    };
+
+    enum class MediaCardActivationEvent
+    {
+        Active,
+        ClickActive,
+        Inactive,
+    };
+
+    struct MediaCardActivationLifecycle
+    {
+        bool has_been_activated{};
+        bool deactivate_dismiss_posted{};
+        MediaCardLifecyclePhase phase{ MediaCardLifecyclePhase::Closed };
+
+        [[nodiscard]] constexpr bool ShouldMarkActivated(MediaCardActivationEvent event) const noexcept
+        {
+            return (phase == MediaCardLifecyclePhase::Opening
+                    || phase == MediaCardLifecyclePhase::Open)
+                && (event == MediaCardActivationEvent::Active
+                    || event == MediaCardActivationEvent::ClickActive);
+        }
+
+        [[nodiscard]] constexpr bool ShouldPostDeactivateDismiss(
+            MediaCardActivationEvent event) const noexcept
+        {
+            return event == MediaCardActivationEvent::Inactive
+                && has_been_activated
+                && !deactivate_dismiss_posted
+                && (phase == MediaCardLifecyclePhase::Opening
+                    || phase == MediaCardLifecyclePhase::Open);
+        }
+
+        [[nodiscard]] constexpr bool ShouldDismissAfterDeferredDeactivate(
+            bool is_current_card,
+            bool is_foreground_card) const noexcept
+        {
+            return is_current_card
+                && has_been_activated
+                && !is_foreground_card
+                && (phase == MediaCardLifecyclePhase::Opening
+                    || phase == MediaCardLifecyclePhase::Open);
+        }
+    };
 
     struct MediaCardLifecycleState
     {

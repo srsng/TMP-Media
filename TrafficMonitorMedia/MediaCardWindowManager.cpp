@@ -1,18 +1,42 @@
 #include "pch.h"
 #include "MediaCardWindowManager.h"
 
-#include "MediaCardDismissOverlayWnd.h"
 #include "MediaCardInteractionState.h"
 #include "MediaCardWindowBehavior.h"
 #include "MediaCardWnd.h"
 #include "TrafficMonitorMedia.h"
 
+namespace
+{
+    [[nodiscard]] HWND ResolveMediaCardOwner(HWND anchor_window) noexcept
+    {
+        if (anchor_window == nullptr || !IsWindow(anchor_window))
+        {
+            return nullptr;
+        }
+
+        const HWND root_window = GetAncestor(anchor_window, GA_ROOT);
+        if (root_window == nullptr || !IsWindow(root_window))
+        {
+            return nullptr;
+        }
+
+        wchar_t class_name[64]{};
+        const int length = GetClassNameW(root_window, class_name, static_cast<int>(std::size(class_name)));
+        if (length <= 0 || !media::IsTrustedMediaCardOwnerClass(
+                std::wstring_view(class_name, static_cast<std::size_t>(length))))
+        {
+            return nullptr;
+        }
+        return root_window;
+    }
+}
+
 CMediaCardWindowManager* CMediaCardWindowManager::s_scheduled_manager = nullptr;
 CMediaCardWindowManager* CMediaCardWindowManager::s_animating_manager = nullptr;
 
 CMediaCardWindowManager::CMediaCardWindowManager()
-    : m_overlay(std::make_unique<CMediaCardDismissOverlayWnd>())
-    , m_card(std::make_unique<CMediaCardWnd>(this))
+    : m_card(std::make_unique<CMediaCardWnd>(this))
 {
 }
 
@@ -90,14 +114,14 @@ void CMediaCardWindowManager::Open(HWND anchor_window, int client_x, int client_
     {
         GetCursorPos(&anchor_point);
     }
-    OpenAtScreenPoint(anchor_point);
+    OpenAtScreenPoint(anchor_window, anchor_point);
 }
 
-void CMediaCardWindowManager::OpenAtScreenPoint(CPoint anchor_point)
+void CMediaCardWindowManager::OpenAtScreenPoint(HWND anchor_window, CPoint anchor_point)
 {
     AFX_MANAGE_STATE(AfxGetStaticModuleState());
 
-    DestroyCardAndOverlay();
+    DestroyCardWindow();
 
     const HMONITOR monitor = MonitorFromPoint(anchor_point, MONITOR_DEFAULTTONEAREST);
     MONITORINFO monitor_info{ sizeof(MONITORINFO) };
@@ -127,15 +151,16 @@ void CMediaCardWindowManager::OpenAtScreenPoint(CPoint anchor_point)
             monitor_info.rcWork.bottom,
         });
 
-    if (!m_overlay->Create(this))
-    {
-        return;
-    }
-
     const CRect card_rect(placement.x, placement.y, placement.x + width, placement.y + height);
-    if (!m_card->Create(m_overlay.get(), card_rect))
+    const HWND owner_window = ResolveMediaCardOwner(anchor_window);
+    ++m_card_message_generation;
+    if (m_card_message_generation == 0)
     {
-        DestroyCardAndOverlay();
+        ++m_card_message_generation;
+    }
+    if (!m_card->Create(owner_window, card_rect, m_card_message_generation))
+    {
+        DestroyCardWindow();
         return;
     }
 
@@ -143,15 +168,15 @@ void CMediaCardWindowManager::OpenAtScreenPoint(CPoint anchor_point)
     m_card_marked_visible = true;
     m_card->RefreshSnapshot();
     m_card->SetInteractionEnabled(true);
-    m_card->ShowWindow(media::kMediaCardShowCommand);
-    m_card->SetWindowPos(
-        &CWnd::wndTopMost,
-        card_rect.left,
-        card_rect.top,
-        card_rect.Width(),
-        card_rect.Height(),
-        media::kMediaCardInitialPositionFlags);
+    m_activation_compensation_attempted = false;
+    m_opening_animation_completed = false;
     StartAnimation(AnimationKind::Opening, card_rect);
+    m_card->ShowWindow(media::kMediaCardShowCommand);
+    SetForegroundWindow(m_card->GetSafeHwnd());
+    if (!m_card->BeginActivationVerification())
+    {
+        ForceClose();
+    }
 }
 
 void CMediaCardWindowManager::Close()
@@ -163,7 +188,7 @@ void CMediaCardWindowManager::Close()
     }
     if (!HasCardWindow())
     {
-        DestroyCardAndOverlay();
+        DestroyCardWindow();
         return;
     }
 
@@ -177,7 +202,7 @@ void CMediaCardWindowManager::Close()
 void CMediaCardWindowManager::ForceClose()
 {
     CancelScheduledOpen();
-    DestroyCardAndOverlay();
+    DestroyCardWindow();
 }
 
 void CMediaCardWindowManager::OnCardDestroyed()
@@ -189,6 +214,78 @@ void CMediaCardWindowManager::OnCardDestroyed()
     {
         ForceClose();
     }
+}
+
+void CMediaCardWindowManager::OnCardDeactivated(
+    HWND card_window,
+    std::uintptr_t message_generation)
+{
+    if (!media::IsCurrentMediaCardMessageGeneration(
+            message_generation,
+            m_card_message_generation)
+        || !IsWindow(card_window)
+        || !IsCurrentCard(card_window)
+        || (m_state != WindowState::Opening && m_state != WindowState::Open)
+        || !m_card->HasBeenActivated()
+        || GetForegroundWindow() == card_window)
+    {
+        return;
+    }
+
+    Close();
+}
+
+void CMediaCardWindowManager::OnCardActivationVerification(
+    HWND card_window,
+    std::uintptr_t message_generation)
+{
+    if (!media::IsCurrentMediaCardMessageGeneration(
+            message_generation,
+            m_card_message_generation)
+        || !IsWindow(card_window)
+        || !IsCurrentCard(card_window)
+        || (m_state != WindowState::Opening && m_state != WindowState::Open))
+    {
+        return;
+    }
+    if (m_card->HasBeenActivated())
+    {
+        if (media::IsMediaCardActivationVerified(
+                true,
+                GetForegroundWindow() == card_window))
+        {
+            TryCompleteOpening();
+        }
+        else
+        {
+            Close();
+        }
+        return;
+    }
+    if (m_activation_compensation_attempted)
+    {
+        ForceClose();
+        return;
+    }
+
+    m_activation_compensation_attempted = true;
+    SetForegroundWindow(card_window);
+    if (GetForegroundWindow() == card_window
+        && GetWindowThreadProcessId(card_window, nullptr) == GetCurrentThreadId())
+    {
+        SetActiveWindow(card_window);
+    }
+    if (!m_card->BeginActivationVerification())
+    {
+        ForceClose();
+    }
+}
+
+bool CMediaCardWindowManager::IsCurrentCard(HWND card_window) const noexcept
+{
+    return card_window != nullptr
+        && m_card != nullptr
+        && m_card->GetSafeHwnd() == card_window;
 }
 
 bool CMediaCardWindowManager::IsOpen() const noexcept
@@ -224,11 +321,12 @@ void CMediaCardWindowManager::StartAnimation(
         if (kind == AnimationKind::Opening)
         {
             m_animation_kind = AnimationKind::None;
-            m_state = WindowState::Open;
+            m_opening_animation_completed = true;
+            TryCompleteOpening();
         }
         else
         {
-            DestroyCardAndOverlay();
+            DestroyCardWindow();
         }
     }
 }
@@ -237,7 +335,7 @@ void CMediaCardWindowManager::AdvanceAnimation()
 {
     if (m_animation_kind == AnimationKind::None || !HasCardWindow())
     {
-        DestroyCardAndOverlay();
+        DestroyCardWindow();
         return;
     }
 
@@ -255,10 +353,11 @@ void CMediaCardWindowManager::AdvanceAnimation()
     if (m_animation_kind == AnimationKind::Opening)
     {
         StopAnimation();
-        m_state = WindowState::Open;
+        m_opening_animation_completed = true;
+        TryCompleteOpening();
         return;
     }
-    DestroyCardAndOverlay();
+    DestroyCardWindow();
 }
 
 void CMediaCardWindowManager::StopAnimation()
@@ -275,7 +374,25 @@ void CMediaCardWindowManager::StopAnimation()
     m_animation_kind = AnimationKind::None;
 }
 
-void CMediaCardWindowManager::DestroyCardAndOverlay()
+void CMediaCardWindowManager::TryCompleteOpening()
+{
+    if (m_state != WindowState::Opening || !HasCardWindow())
+    {
+        return;
+    }
+
+    const bool activation_verified = media::IsMediaCardActivationVerified(
+        m_card->HasBeenActivated(),
+        GetForegroundWindow() == m_card->GetSafeHwnd());
+    if (media::ShouldCompleteMediaCardOpening(
+            m_opening_animation_completed,
+            activation_verified))
+    {
+        m_state = WindowState::Open;
+    }
+}
+
+void CMediaCardWindowManager::DestroyCardWindow()
 {
     StopAnimation();
     m_close_in_progress = true;
@@ -283,16 +400,14 @@ void CMediaCardWindowManager::DestroyCardAndOverlay()
     {
         m_card->DestroyWindow();
     }
-    if (m_overlay && m_overlay->GetSafeHwnd())
-    {
-        m_overlay->DestroyWindow();
-    }
     if (m_card_marked_visible)
     {
         m_card_marked_visible = false;
         g_plugin.SetMediaCardVisible(false);
     }
     m_close_in_progress = false;
+    m_activation_compensation_attempted = false;
+    m_opening_animation_completed = false;
     m_state = WindowState::Closed;
     m_current_alpha = 255;
     m_animation_start_alpha = 255;

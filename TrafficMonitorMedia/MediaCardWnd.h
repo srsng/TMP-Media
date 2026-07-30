@@ -3,6 +3,8 @@
 #include "MediaCardVisuals.h"
 #include "MediaSessionService.h"
 
+#include <cstdint>
+
 class CMediaCardWindowManager;
 
 class CMediaCardWnd : public CWnd
@@ -10,11 +12,13 @@ class CMediaCardWnd : public CWnd
 public:
     explicit CMediaCardWnd(CMediaCardWindowManager* manager);
 
-    BOOL Create(CWnd* owner, const CRect& rect);
+    BOOL Create(HWND owner_window, const CRect& rect, std::uintptr_t message_generation);
     void RefreshSnapshot();
     void ApplyAnimationFrame(BYTE alpha, const CRect& rect);
     void SetInteractionEnabled(bool enabled) noexcept;
     void CancelSeekPreview();
+    [[nodiscard]] bool HasBeenActivated() const noexcept;
+    [[nodiscard]] bool BeginActivationVerification() noexcept;
 
 protected:
     afx_msg int OnCreate(LPCREATESTRUCT create_struct);
@@ -25,6 +29,9 @@ protected:
     afx_msg BOOL OnEraseBkgnd(CDC* dc);
     afx_msg void OnTimer(UINT_PTR timer_id);
     afx_msg void OnKeyDown(UINT character, UINT repeat_count, UINT flags);
+    afx_msg void OnActivate(UINT state, CWnd* other_window, BOOL minimized);
+    afx_msg LRESULT OnDeferredDeactivateDismiss(WPARAM, LPARAM);
+    afx_msg LRESULT OnVerifyActivation(WPARAM, LPARAM);
     afx_msg void OnLButtonDown(UINT flags, CPoint point);
     afx_msg void OnLButtonUp(UINT flags, CPoint point);
     afx_msg void OnMouseMove(UINT flags, CPoint point);
@@ -65,4 +72,9 @@ private:
     bool m_dragging_progress{};
     double m_preview_fraction{};
     bool m_interaction_enabled{ true };
+    bool m_has_been_activated{};
+    bool m_deactivate_dismiss_posted{};
+    bool m_deactivate_dismiss_fallback_pending{};
+    bool m_activation_verification_posted{};
+    std::uintptr_t m_message_generation{};
 };

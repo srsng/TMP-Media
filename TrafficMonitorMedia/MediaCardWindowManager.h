@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <memory>
 
-class CMediaCardDismissOverlayWnd;
 class CMediaCardWnd;
 
 class CMediaCardWindowManager
@@ -26,6 +25,9 @@ public:
     void Close();
     void ForceClose();
     void OnCardDestroyed();
+    void OnCardDeactivated(HWND card_window, std::uintptr_t message_generation);
+    void OnCardActivationVerification(HWND card_window, std::uintptr_t message_generation);
+    [[nodiscard]] bool IsCurrentCard(HWND card_window) const noexcept;
     [[nodiscard]] bool IsOpen() const noexcept;
 
 private:
@@ -50,15 +52,15 @@ private:
 
     static void CALLBACK OpenTimerProc(HWND window, UINT message, UINT_PTR timer_id, DWORD time);
     static void CALLBACK AnimationTimerProc(HWND window, UINT message, UINT_PTR timer_id, DWORD time);
-    void OpenAtScreenPoint(CPoint anchor_point);
+    void OpenAtScreenPoint(HWND anchor_window, CPoint anchor_point);
     void StartAnimation(AnimationKind kind, const CRect& base_rect);
     void AdvanceAnimation();
     void StopAnimation();
-    void DestroyCardAndOverlay();
+    void TryCompleteOpening();
+    void DestroyCardWindow();
     void ApplyAnimationFrame(double progress);
     [[nodiscard]] bool HasCardWindow() const noexcept;
 
-    std::unique_ptr<CMediaCardDismissOverlayWnd> m_overlay;
     std::unique_ptr<CMediaCardWnd> m_card;
     HWND m_pending_anchor{};
     CPoint m_pending_client_point{};
@@ -74,6 +76,9 @@ private:
     BYTE m_animation_start_alpha{ 255 };
     bool m_close_in_progress{};
     bool m_card_marked_visible{};
+    bool m_activation_compensation_attempted{};
+    bool m_opening_animation_completed{};
+    std::uintptr_t m_card_message_generation{};
 
     static CMediaCardWindowManager* s_scheduled_manager;
     static CMediaCardWindowManager* s_animating_manager;

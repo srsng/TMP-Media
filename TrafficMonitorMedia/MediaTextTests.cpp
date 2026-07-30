@@ -9,12 +9,72 @@
 
 // 纯文本选择逻辑不依赖 TrafficMonitor 或 GSMTC；这些编译期断言是自动回归检查。
 
-// 卡片必须以非激活窗口显示，避免自动隐藏任务栏因插件主动激活而立即收起。
-static_assert((media::kMediaCardWindowExtendedStyle & WS_EX_NOACTIVATE) != 0);
-static_assert(media::kMediaCardShowCommand == SW_SHOWNOACTIVATE);
+// 卡片参与正常激活生命周期；仅动画帧禁止重复激活。
+static_assert((media::kMediaCardWindowExtendedStyle & WS_EX_NOACTIVATE) == 0);
+static_assert(media::kMediaCardShowCommand == SW_SHOW);
 static_assert((media::kMediaCardAnimationPositionFlags & SWP_NOACTIVATE) != 0);
 static_assert((media::kMediaCardAnimationPositionFlags & SWP_NOOWNERZORDER) != 0);
-static_assert((media::kMediaCardInitialPositionFlags & SWP_SHOWWINDOW) != 0);
+
+constexpr media::MediaCardActivationLifecycle kInactiveBeforeActivation{
+    false, false, media::MediaCardLifecyclePhase::Opening };
+static_assert(!kInactiveBeforeActivation.ShouldPostDeactivateDismiss(
+    media::MediaCardActivationEvent::Inactive));
+
+constexpr media::MediaCardActivationLifecycle kActiveOpeningCard{
+    true, false, media::MediaCardLifecyclePhase::Opening };
+static_assert(kActiveOpeningCard.ShouldMarkActivated(media::MediaCardActivationEvent::Active));
+static_assert(kActiveOpeningCard.ShouldMarkActivated(media::MediaCardActivationEvent::ClickActive));
+static_assert(kActiveOpeningCard.ShouldPostDeactivateDismiss(
+    media::MediaCardActivationEvent::Inactive));
+static_assert(kActiveOpeningCard.ShouldDismissAfterDeferredDeactivate(true, false));
+
+constexpr media::MediaCardActivationLifecycle kDismissAlreadyPosted{
+    true, true, media::MediaCardLifecyclePhase::Open };
+static_assert(!kDismissAlreadyPosted.ShouldPostDeactivateDismiss(
+    media::MediaCardActivationEvent::Inactive));
+
+constexpr media::MediaCardActivationLifecycle kReactivatedCard{
+    true, false, media::MediaCardLifecyclePhase::Open };
+static_assert(!kReactivatedCard.ShouldDismissAfterDeferredDeactivate(true, true));
+
+constexpr media::MediaCardActivationLifecycle kClosingCardActivation{
+    true, false, media::MediaCardLifecyclePhase::Closing };
+static_assert(!kClosingCardActivation.ShouldMarkActivated(
+    media::MediaCardActivationEvent::Active));
+static_assert(!kClosingCardActivation.ShouldPostDeactivateDismiss(
+    media::MediaCardActivationEvent::Inactive));
+static_assert(!kClosingCardActivation.ShouldDismissAfterDeferredDeactivate(true, false));
+
+constexpr media::MediaCardActivationLifecycle kClosedCardActivation{
+    true, false, media::MediaCardLifecyclePhase::Closed };
+static_assert(!kClosedCardActivation.ShouldPostDeactivateDismiss(
+    media::MediaCardActivationEvent::Inactive));
+static_assert(!kClosedCardActivation.ShouldDismissAfterDeferredDeactivate(false, false));
+
+// 仅任务栏根窗口可作为媒体卡片 owner，避免绑定到宿主内部或临时窗口。
+static_assert(media::IsTrustedMediaCardOwnerClass(L"Shell_TrayWnd"));
+static_assert(media::IsTrustedMediaCardOwnerClass(L"Shell_SecondaryTrayWnd"));
+static_assert(!media::IsTrustedMediaCardOwnerClass(L"TaskbarCreated"));
+static_assert(!media::IsTrustedMediaCardOwnerClass(L"TrafficMonitor"));
+
+// 私有延迟消息必须属于当前窗口代际，避免旧 HWND 消息影响新卡片。
+static_assert(media::IsCurrentMediaCardMessageGeneration(7, 7));
+static_assert(!media::IsCurrentMediaCardMessageGeneration(6, 7));
+
+// 收到激活消息还不够；卡片必须实际成为前台窗口才算激活验证成功。
+static_assert(!media::IsMediaCardActivationVerified(false, false));
+static_assert(!media::IsMediaCardActivationVerified(true, false));
+static_assert(media::IsMediaCardActivationVerified(true, true));
+
+// 入场动画与前台激活都完成后，窗口状态才允许进入 Open。
+static_assert(!media::ShouldCompleteMediaCardOpening(false, false));
+static_assert(!media::ShouldCompleteMediaCardOpening(false, true));
+static_assert(!media::ShouldCompleteMediaCardOpening(true, false));
+static_assert(media::ShouldCompleteMediaCardOpening(true, true));
+
+// 私有失活消息投递失败时必须安排异步备用关闭，而不是遗留失活卡片。
+static_assert(!media::ShouldScheduleMediaCardDeactivateFallback(true));
+static_assert(media::ShouldScheduleMediaCardDeactivateFallback(false));
 
 static_assert(media::SelectDisplayText(media::MediaTitleState::Loading, L"", L"") == media::kLoadingMediaText);
 static_assert(media::SelectDisplayText(media::MediaTitleState::Ready, L"Song", L"Player") == L"Song");

@@ -254,7 +254,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="MediaCardDismissOverlayWnd.h" />
     <ClInclude Include="MediaCardInteractionState.h" />
     <ClInclude Include="MediaCardWindowBehavior.h" />
     <ClInclude Include="MediaCardWindowManager.h" />
@@ -275,7 +274,6 @@
     <ClInclude Include="TrafficMonitorMediaItem.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MediaCardDismissOverlayWnd.cpp" />
     <ClCompile Include="MediaCardWindowManager.cpp" />
     <ClCompile Include="MediaCardWnd.cpp" />
     <ClCompile Include="MediaCoverImage.cpp" />
