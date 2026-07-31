@@ -4,9 +4,13 @@ TrafficMonitorMedia 是一个适用于 [TrafficMonitor](https://github.com/zhong
 
 最新版本：**1.1.0**
 
-## 截图 (v1.0.1)
+## 截图 (v1.1.0)
 
 基础展示
+
+![基础展示](./images/example-fullly-show.png)
+
+媒体标题展示
 
 ![基础展示](./images/example-without-bg.png)
 
