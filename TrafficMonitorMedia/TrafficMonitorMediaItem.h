@@ -1,5 +1,6 @@
 #pragma once
 #include "..\include\PluginInterface.h"
+#include "MediaItemInput.h"
 
 class CTrafficMonitorMediaItem : public IPluginItem
 {
@@ -14,4 +15,10 @@ public:
     virtual int GetItemWidthEx(void* hDC) const override;
     virtual void DrawItem(void* hDC, int x, int y, int w, int h, bool dark_mode) override;
     virtual int OnMouseEvent(MouseEventType type, int x, int y, void* hWnd, int flag) override;
+
+    void SetDrawingTaskbarWindow(bool drawing_taskbar_window) noexcept;
+
+private:
+    bool m_drawing_taskbar_window{};
+    media::MediaItemTaskbarRectCache m_draw_rect_cache;
 };

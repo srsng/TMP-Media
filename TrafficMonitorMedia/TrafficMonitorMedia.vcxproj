@@ -260,6 +260,7 @@
     <ClInclude Include="MediaCardWnd.h" />
     <ClInclude Include="MediaCardVisuals.h" />
     <ClInclude Include="MediaCoverImage.h" />
+    <ClInclude Include="MediaItemInput.h" />
     <ClInclude Include="MediaSessionSelection.h" />
     <ClInclude Include="MediaSessionService.h" />
     <ClInclude Include="MediaSettings.h" />

@@ -392,7 +392,10 @@ void CMediaSessionService::Start()
     m_session_switch_requests.clear();
     m_seek_requests.clear();
     m_control_actions.clear();
-    m_pending_single_click.reset();
+    for (auto& pending_single_click : m_pending_single_clicks)
+    {
+        pending_single_click.reset();
+    }
     m_suppress_single_click_until = {};
     m_worker = std::thread(&CMediaSessionService::WorkerLoop, this);
     m_started = true;
@@ -411,7 +414,10 @@ void CMediaSessionService::Stop()
         m_session_switch_requests.clear();
         m_seek_requests.clear();
         m_control_actions.clear();
-        m_pending_single_click.reset();
+        for (auto& pending_single_click : m_pending_single_clicks)
+        {
+            pending_single_click.reset();
+        }
     }
     m_worker_cv.notify_one();
 
@@ -517,7 +523,10 @@ void CMediaSessionService::RequestImmediateAction(media::MediaControlAction acti
     m_worker_cv.notify_one();
 }
 
-void CMediaSessionService::RequestSingleClick(media::MediaControlAction action)
+void CMediaSessionService::RequestSingleClick(
+    media::MediaControlAction action,
+    media::MediaItemHitRegion hit_region,
+    unsigned int confirmation_delay_milliseconds)
 {
     {
         std::lock_guard<std::mutex> lock(m_worker_mutex);
@@ -527,20 +536,25 @@ void CMediaSessionService::RequestSingleClick(media::MediaControlAction action)
         }
 
         const auto now = std::chrono::steady_clock::now();
-        if (!media::ShouldScheduleSingleClick(action, now < m_suppress_single_click_until))
+        const std::size_t hit_region_index = media::MediaItemHitRegionIndex(hit_region);
+        if (!media::ShouldScheduleSingleClick(
+                action,
+                now < m_suppress_single_click_until[hit_region_index]))
         {
             return;
         }
 
-        m_pending_single_click = PendingSingleClick{
+        m_pending_single_clicks[hit_region_index] = PendingSingleClick{
             .action = action,
-            .deadline = now + std::chrono::milliseconds(GetDoubleClickTime()),
+            .deadline = now + std::chrono::milliseconds(confirmation_delay_milliseconds),
         };
     }
     m_worker_cv.notify_one();
 }
 
-void CMediaSessionService::RequestDoubleClick(media::MediaControlAction action)
+void CMediaSessionService::RequestDoubleClick(
+    media::MediaControlAction action,
+    media::MediaItemHitRegion hit_region)
 {
     {
         std::lock_guard<std::mutex> lock(m_worker_mutex);
@@ -550,8 +564,10 @@ void CMediaSessionService::RequestDoubleClick(media::MediaControlAction action)
         }
 
         const auto double_click_interval = std::chrono::milliseconds(GetDoubleClickTime());
-        m_pending_single_click.reset();
-        m_suppress_single_click_until = std::chrono::steady_clock::now() + double_click_interval;
+        const std::size_t hit_region_index = media::MediaItemHitRegionIndex(hit_region);
+        m_pending_single_clicks[hit_region_index].reset();
+        m_suppress_single_click_until[hit_region_index] =
+            std::chrono::steady_clock::now() + double_click_interval;
         if (action != media::MediaControlAction::None
             && action != media::MediaControlAction::OpenMediaCard)
         {
@@ -725,10 +741,19 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
         const media::MediaControlAction queued_action = has_queued_action
             ? m_control_actions.front()
             : media::MediaControlAction::None;
-        const bool has_matured_single_click = m_pending_single_click.has_value()
-            && now >= m_pending_single_click->deadline;
-        const media::MediaControlAction single_click_action = m_pending_single_click
-            ? m_pending_single_click->action
+        std::optional<std::size_t> matured_single_click_index;
+        for (std::size_t index = 0; index < m_pending_single_clicks.size(); ++index)
+        {
+            if (m_pending_single_clicks[index]
+                && now >= m_pending_single_clicks[index]->deadline)
+            {
+                matured_single_click_index = index;
+                break;
+            }
+        }
+        const bool has_matured_single_click = matured_single_click_index.has_value();
+        const media::MediaControlAction single_click_action = has_matured_single_click
+            ? m_pending_single_clicks[*matured_single_click_index]->action
             : media::MediaControlAction::None;
         const media::MediaControlAction action = media::ResolveClickAction(
             has_queued_action,
@@ -747,7 +772,7 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
         }
         if (has_matured_single_click)
         {
-            m_pending_single_click.reset();
+            m_pending_single_clicks[*matured_single_click_index].reset();
             return {
                 .action = action,
                 .cover_background_enabled = m_cover_background_enabled,
@@ -766,12 +791,15 @@ CMediaSessionService::WorkerRequest CMediaSessionService::WaitForWork(
         }
 
         auto wake_time = next_periodic_refresh;
-        if (m_pending_single_click)
+        for (const auto& pending_single_click : m_pending_single_clicks)
         {
-            wake_time = (std::min)(wake_time, m_pending_single_click->deadline);
+            if (pending_single_click)
+            {
+                wake_time = (std::min)(wake_time, pending_single_click->deadline);
+            }
         }
 
-        // 任意通知后重新计算等待截止时间，确保新单击使用系统双击间隔，而不是旧的刷新时间。
+        // 任意通知后重新计算等待截止时间，确保分区单击按各自确认时长到期。
         m_worker_cv.wait_until(lock, wake_time);
     }
 }

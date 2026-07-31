@@ -70,8 +70,10 @@ private:
     CSpinButtonCtrl m_min_title_width_spin;
     CSpinButtonCtrl m_max_title_width_spin;
     CSpinButtonCtrl m_system_volume_step_spin;
-    CComboBox m_left_click_combo;
-    CComboBox m_left_double_click_combo;
+    CComboBox m_icon_left_click_combo;
+    CComboBox m_icon_left_double_click_combo;
+    CComboBox m_title_left_click_combo;
+    CComboBox m_title_left_double_click_combo;
     CComboBox m_right_click_combo;
     CComboBox m_wheel_action_combo;
     std::vector<ControlLayout> m_control_layouts;

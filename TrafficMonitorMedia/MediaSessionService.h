@@ -1,9 +1,11 @@
 #pragma once
 
 #include "MediaCoverImage.h"
+#include "MediaItemInput.h"
 #include "MediaSessionSelection.h"
 #include "MediaText.h"
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <condition_variable>
@@ -57,8 +59,13 @@ public:
     void RequestSwitchSession(media::SessionSwitchDirection direction);
     void RequestSeekToPosition(media::SessionIdentity session_identity, std::int64_t position_ticks);
     void RequestImmediateAction(media::MediaControlAction action);
-    void RequestSingleClick(media::MediaControlAction action);
-    void RequestDoubleClick(media::MediaControlAction action);
+    void RequestSingleClick(
+        media::MediaControlAction action,
+        media::MediaItemHitRegion hit_region,
+        unsigned int confirmation_delay_milliseconds);
+    void RequestDoubleClick(
+        media::MediaControlAction action,
+        media::MediaItemHitRegion hit_region);
 
     [[nodiscard]] MediaTitleSnapshot GetSnapshot() const;
     [[nodiscard]] std::wstring GetDisplayText() const;
@@ -96,8 +103,8 @@ private:
     std::deque<media::SeekRequest> m_seek_requests;
 
     std::deque<media::MediaControlAction> m_control_actions;
-    std::optional<PendingSingleClick> m_pending_single_click;
-    std::chrono::steady_clock::time_point m_suppress_single_click_until{};
+    std::array<std::optional<PendingSingleClick>, 2> m_pending_single_clicks;
+    std::array<std::chrono::steady_clock::time_point, 2> m_suppress_single_click_until{};
     bool m_started{};
     bool m_stop_requested{};
     bool m_refresh_requested{};

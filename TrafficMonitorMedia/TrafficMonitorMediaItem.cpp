@@ -2,6 +2,7 @@
 #include "TrafficMonitorMediaItem.h"
 #include "TrafficMonitorMedia.h"
 #include "MediaCardInteractionState.h"
+#include "MediaItemInput.h"
 
 #include <algorithm>
 #include <cmath>
@@ -372,6 +373,15 @@ int CTrafficMonitorMediaItem::GetItemWidthEx(void* hDC) const
 
 void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, bool dark_mode)
 {
+    m_draw_rect_cache.RecordDrawRect(
+        {
+            x,
+            y,
+            x + (std::max)(0, w),
+            y + (std::max)(0, h),
+        },
+        m_drawing_taskbar_window);
+
     CDC* pDC = CDC::FromHandle(static_cast<HDC>(hDC));
     if (pDC == nullptr)
     {
@@ -500,6 +510,11 @@ void CTrafficMonitorMediaItem::DrawItem(void* hDC, int x, int y, int w, int h, b
     pDC->SetTextColor(old_text_color);
 }
 
+void CTrafficMonitorMediaItem::SetDrawingTaskbarWindow(bool drawing_taskbar_window) noexcept
+{
+    m_drawing_taskbar_window = drawing_taskbar_window;
+}
+
 int CTrafficMonitorMediaItem::OnMouseEvent(
     MouseEventType type,
     int x,
@@ -552,48 +567,54 @@ int CTrafficMonitorMediaItem::OnMouseEvent(
         }
     }
 
+    const media::MediaItemHitRegion hit_region = media::ResolveMediaItemHitRegion(
+        m_draw_rect_cache.GetRectForHitTest(),
+        m_draw_rect_cache.HasTaskbarRectForHitTest(),
+        settings.show_status_icon,
+        g_plugin.DPI(kHorizontalPadding96Dpi),
+        g_plugin.DPI(kStatusIconSize96Dpi),
+        x,
+        y);
     media::MediaControlAction action = media::MediaControlAction::None;
 
     switch (type)
     {
     case MT_LCLICKED:
-        action = settings.input.left_click;
+    {
+        action = media::SelectLeftClickAction(settings.input, hit_region);
+        const bool has_left_double_click_action =
+            media::SelectLeftDoubleClickAction(settings.input, hit_region)
+            != media::MediaControlAction::None;
+        const unsigned int confirmation_delay =
+            media::CalculateMediaCardSingleClickConfirmationDelay(
+                GetDoubleClickTime(),
+                has_left_double_click_action);
         if (action == media::MediaControlAction::OpenMediaCard)
         {
-            const bool has_left_double_click_action =
-                settings.input.left_double_click != media::MediaControlAction::None;
-            const unsigned int confirmation_delay =
-                media::CalculateMediaCardSingleClickConfirmationDelay(
-                    GetDoubleClickTime(),
-                    has_left_double_click_action);
-            if (confirmation_delay == 0)
-            {
-                g_plugin.OpenMediaCard(static_cast<HWND>(hWnd), x, y);
-            }
-            else
-            {
-                g_plugin.ScheduleOpenMediaCard(
-                    static_cast<HWND>(hWnd),
-                    x,
-                    y,
-                    confirmation_delay);
-            }
+            g_plugin.ScheduleOpenMediaCard(
+                static_cast<HWND>(hWnd),
+                x,
+                y,
+                confirmation_delay,
+                hit_region);
             return 1;
         }
-        g_plugin.RequestSingleClick(action);
+        g_plugin.RequestSingleClick(action, hit_region, confirmation_delay);
         return action != media::MediaControlAction::None ? 1 : 0;
+    }
     case MT_DBCLICKED:
     {
-        g_plugin.SuppressScheduledMediaCardOpenAfterDoubleClick();
-        action = settings.input.left_double_click;
+        g_plugin.SuppressScheduledMediaCardOpenAfterDoubleClick(hit_region);
+        action = media::SelectLeftDoubleClickAction(settings.input, hit_region);
         const media::DoubleClickDispatch dispatch = media::ResolveDoubleClickDispatch(action);
-        g_plugin.RequestDoubleClick(dispatch.media_service_action);
+        g_plugin.RequestDoubleClick(dispatch.media_service_action, hit_region);
         if (dispatch.open_media_card)
         {
             g_plugin.OpenMediaCard(static_cast<HWND>(hWnd), x, y);
         }
         return action != media::MediaControlAction::None
-            || settings.input.left_click != media::MediaControlAction::None
+            || media::SelectLeftClickAction(settings.input, hit_region)
+                != media::MediaControlAction::None
             ? 1
             : 0;
     }

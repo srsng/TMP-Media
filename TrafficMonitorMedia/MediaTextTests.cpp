@@ -4,6 +4,7 @@
 #include "MediaCardInteractionState.h"
 #include "MediaCardWindowBehavior.h"
 #include "MediaCardVisuals.h"
+#include "MediaItemInput.h"
 
 #include <array>
 
@@ -242,6 +243,65 @@ static_assert(media::CalculateMediaCardSingleClickConfirmationDelay(500, false) 
 static_assert(media::CalculateMediaCardSingleClickConfirmationDelay(200, true) == 200);
 static_assert(media::CalculateMediaCardSingleClickConfirmationDelay(300, true) == 300);
 static_assert(media::CalculateMediaCardSingleClickConfirmationDelay(500, true) == 300);
+static_assert(media::MediaItemHitRegionIndex(media::MediaItemHitRegion::Icon) == 0);
+static_assert(media::MediaItemHitRegionIndex(media::MediaItemHitRegion::Title) == 1);
+
+// 状态图标显示时仅完整图标槽位使用图标绑定，边距和图标后 gap 都归标题绑定。
+constexpr media::MediaItemRect kMediaItemInputRect{ 100, 20, 300, 60 };
+static_assert(media::ResolveMediaItemHitRegion(
+    kMediaItemInputRect, true, true, 8, 16, 108, 30) == media::MediaItemHitRegion::Icon);
+static_assert(media::ResolveMediaItemHitRegion(
+    kMediaItemInputRect, true, true, 8, 16, 107, 30) == media::MediaItemHitRegion::Title);
+static_assert(media::ResolveMediaItemHitRegion(
+    kMediaItemInputRect, true, true, 8, 16, 124, 30) == media::MediaItemHitRegion::Title);
+static_assert(media::ResolveMediaItemHitRegion(
+    kMediaItemInputRect, true, true, 8, 16, 292, 30) == media::MediaItemHitRegion::Title);
+static_assert(media::ResolveMediaItemHitRegion(
+    kMediaItemInputRect, true, false, 8, 16, 110, 30) == media::MediaItemHitRegion::Title);
+
+// 官方 PluginTester 传入显示项局部坐标，不同于 TrafficMonitor 的窗口客户区坐标。
+constexpr media::MediaItemRect kPluginTesterInputRect{ 16, 32, 216, 66 };
+static_assert(media::ResolveMediaItemHitRegion(
+    kPluginTesterInputRect, false, true, 8, 16, 16, 17) == media::MediaItemHitRegion::Icon);
+static_assert(media::ResolveMediaItemHitRegion(
+    kPluginTesterInputRect, false, true, 8, 16, 28, 17) == media::MediaItemHitRegion::Title);
+
+// 主窗口重绘不能覆盖任务栏点击使用的矩形；否则任务栏坐标会被误判为标题区。
+constexpr media::MediaItemTaskbarRectCache kTaskbarRectCache = []
+{
+    media::MediaItemTaskbarRectCache cache{};
+    cache.RecordDrawRect(kMediaItemInputRect, true);
+    cache.RecordDrawRect({ 10, 10, 210, 50 }, false);
+    return cache;
+}();
+static_assert(kTaskbarRectCache.HasRectForHitTest());
+static_assert(kTaskbarRectCache.HasTaskbarRectForHitTest());
+static_assert(media::ResolveMediaItemHitRegion(
+    kTaskbarRectCache.GetRectForHitTest(),
+    kTaskbarRectCache.HasTaskbarRectForHitTest(),
+    true,
+    8,
+    16,
+    108,
+    30)
+    == media::MediaItemHitRegion::Icon);
+
+constexpr media::InputBindings kDistinctHitRegionBindings{
+    MediaControlAction::TogglePlayPause,
+    MediaControlAction::SkipPrevious,
+    MediaControlAction::OpenMediaCard,
+    MediaControlAction::SkipNext,
+    MediaControlAction::None,
+    media::WheelAction::SwitchMediaSession,
+};
+static_assert(media::SelectLeftClickAction(
+    kDistinctHitRegionBindings, media::MediaItemHitRegion::Icon) == MediaControlAction::TogglePlayPause);
+static_assert(media::SelectLeftDoubleClickAction(
+    kDistinctHitRegionBindings, media::MediaItemHitRegion::Icon) == MediaControlAction::SkipPrevious);
+static_assert(media::SelectLeftClickAction(
+    kDistinctHitRegionBindings, media::MediaItemHitRegion::Title) == MediaControlAction::OpenMediaCard);
+static_assert(media::SelectLeftDoubleClickAction(
+    kDistinctHitRegionBindings, media::MediaItemHitRegion::Title) == MediaControlAction::SkipNext);
 
 constexpr media::MediaCardAnimationFrame kOpeningStart =
     media::CalculateMediaCardAnimationFrame(

@@ -206,7 +206,7 @@ const wchar_t* CTrafficMonitorMedia::GetInfo(PluginInfoIndex index)
     case TMI_URL:
         return L"https://github.com/srsng/TMP-Media";
     case TMI_VERSION:
-        return L"1.0.3";
+        return L"1.1.0";
     default:
         return L"";
     }
@@ -219,6 +219,14 @@ void CTrafficMonitorMedia::OnInitialize(ITrafficMonitor* pApp)
     m_media_service.SetCoverBackgroundEnabled(GetSettingsSnapshot().show_cover_background);
     m_media_service.Start();
     m_system_volume_service.Start();
+}
+
+void CTrafficMonitorMedia::OnExtenedInfo(ExtendedInfoIndex index, const wchar_t* data)
+{
+    if (index == EI_DRAW_TASKBAR_WND)
+    {
+        m_item.SetDrawingTaskbarWindow(data != nullptr && std::wstring_view(data) == L"1");
+    }
 }
 
 void* CTrafficMonitorMedia::GetPluginIcon()
@@ -273,14 +281,34 @@ void CTrafficMonitorMedia::LoadConfig(const std::wstring& config_dir)
             kInputSection,
             L"system_volume_step_percent",
             settings.system_volume_step_percent);
-        settings.input.left_click = ReadProfileAction(
+        const media::MediaControlAction legacy_left_click = ReadProfileAction(
             m_config_path,
             L"left_click",
-            settings.input.left_click);
-        settings.input.left_double_click = ReadProfileAction(
+            settings.input.title_left_click);
+        const media::MediaControlAction legacy_left_double_click = ReadProfileAction(
             m_config_path,
             L"left_double_click",
-            settings.input.left_double_click);
+            settings.input.title_left_double_click);
+        const media::InputBindings input_fallbacks = media::BuildInputBindingFallbacks(
+            settings.input,
+            legacy_left_click,
+            legacy_left_double_click);
+        settings.input.icon_left_click = ReadProfileAction(
+            m_config_path,
+            L"icon_left_click",
+            input_fallbacks.icon_left_click);
+        settings.input.icon_left_double_click = ReadProfileAction(
+            m_config_path,
+            L"icon_left_double_click",
+            input_fallbacks.icon_left_double_click);
+        settings.input.title_left_click = ReadProfileAction(
+            m_config_path,
+            L"title_left_click",
+            input_fallbacks.title_left_click);
+        settings.input.title_left_double_click = ReadProfileAction(
+            m_config_path,
+            L"title_left_double_click",
+            input_fallbacks.title_left_double_click);
         settings.input.right_click = ReadProfileAction(
             m_config_path,
             L"right_click",
@@ -345,13 +373,23 @@ void CTrafficMonitorMedia::SaveConfig(const media::SettingData& settings) const
     WriteProfileValue(
         m_config_path,
         kInputSection,
-        L"left_click",
-        media::ToConfigValue(normalized.input.left_click));
+        L"icon_left_click",
+        media::ToConfigValue(normalized.input.icon_left_click));
     WriteProfileValue(
         m_config_path,
         kInputSection,
-        L"left_double_click",
-        media::ToConfigValue(normalized.input.left_double_click));
+        L"icon_left_double_click",
+        media::ToConfigValue(normalized.input.icon_left_double_click));
+    WriteProfileValue(
+        m_config_path,
+        kInputSection,
+        L"title_left_click",
+        media::ToConfigValue(normalized.input.title_left_click));
+    WriteProfileValue(
+        m_config_path,
+        kInputSection,
+        L"title_left_double_click",
+        media::ToConfigValue(normalized.input.title_left_double_click));
     WriteProfileValue(
         m_config_path,
         kInputSection,
@@ -429,14 +467,22 @@ void CTrafficMonitorMedia::RequestImmediateAction(media::MediaControlAction acti
     m_media_service.RequestImmediateAction(action);
 }
 
-void CTrafficMonitorMedia::RequestSingleClick(media::MediaControlAction action)
+void CTrafficMonitorMedia::RequestSingleClick(
+    media::MediaControlAction action,
+    media::MediaItemHitRegion hit_region,
+    unsigned int confirmation_delay_milliseconds)
 {
-    m_media_service.RequestSingleClick(action);
+    m_media_service.RequestSingleClick(
+        action,
+        hit_region,
+        confirmation_delay_milliseconds);
 }
 
-void CTrafficMonitorMedia::RequestDoubleClick(media::MediaControlAction action)
+void CTrafficMonitorMedia::RequestDoubleClick(
+    media::MediaControlAction action,
+    media::MediaItemHitRegion hit_region)
 {
-    m_media_service.RequestDoubleClick(action);
+    m_media_service.RequestDoubleClick(action, hit_region);
 }
 
 void CTrafficMonitorMedia::RequestAdjustSystemVolume(float delta)
@@ -448,13 +494,15 @@ void CTrafficMonitorMedia::ScheduleOpenMediaCard(
     HWND anchor_window,
     int client_x,
     int client_y,
-    unsigned int confirmation_delay_milliseconds)
+    unsigned int confirmation_delay_milliseconds,
+    media::MediaItemHitRegion hit_region)
 {
     m_media_card_manager.ScheduleOpen(
         anchor_window,
         client_x,
         client_y,
-        confirmation_delay_milliseconds);
+        confirmation_delay_milliseconds,
+        hit_region);
 }
 
 void CTrafficMonitorMedia::OpenMediaCard(HWND anchor_window, int client_x, int client_y)
@@ -462,9 +510,10 @@ void CTrafficMonitorMedia::OpenMediaCard(HWND anchor_window, int client_x, int c
     m_media_card_manager.Open(anchor_window, client_x, client_y);
 }
 
-void CTrafficMonitorMedia::SuppressScheduledMediaCardOpenAfterDoubleClick()
+void CTrafficMonitorMedia::SuppressScheduledMediaCardOpenAfterDoubleClick(
+    media::MediaItemHitRegion hit_region)
 {
-    m_media_card_manager.SuppressScheduledOpenAfterDoubleClick();
+    m_media_card_manager.SuppressScheduledOpenAfterDoubleClick(hit_region);
 }
 
 void CTrafficMonitorMedia::CloseMediaCard()

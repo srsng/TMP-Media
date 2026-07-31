@@ -42,6 +42,9 @@
     <ClInclude Include="MediaCoverImage.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="MediaItemInput.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="MediaSettings.h">
       <Filter>头文件</Filter>
     </ClInclude>

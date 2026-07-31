@@ -14,10 +14,21 @@ static_assert(kDefaultSettings.min_title_width == media::kDefaultMinTitleWidth);
 static_assert(kDefaultSettings.max_title_width == media::kDefaultMaxTitleWidth);
 static_assert(kDefaultSettings.system_volume_step_percent == media::kDefaultSystemVolumeStepPercent);
 static_assert(media::kDefaultSystemVolumeStepPercent == 4);
-static_assert(kDefaultSettings.input.left_click == MediaControlAction::OpenMediaCard);
-static_assert(kDefaultSettings.input.left_double_click == MediaControlAction::TogglePlayPause);
+static_assert(kDefaultSettings.input.icon_left_click == MediaControlAction::TogglePlayPause);
+static_assert(kDefaultSettings.input.icon_left_double_click == MediaControlAction::None);
+static_assert(kDefaultSettings.input.title_left_click == MediaControlAction::OpenMediaCard);
+static_assert(kDefaultSettings.input.title_left_double_click == MediaControlAction::None);
 static_assert(kDefaultSettings.input.right_click == MediaControlAction::None);
 static_assert(kDefaultSettings.input.wheel == WheelAction::SwitchMediaSession);
+
+constexpr media::InputBindings kLegacyBindingFallbacks = media::BuildInputBindingFallbacks(
+    media::InputBindings{},
+    MediaControlAction::OpenMediaCard,
+    MediaControlAction::SkipNext);
+static_assert(kLegacyBindingFallbacks.icon_left_click == MediaControlAction::TogglePlayPause);
+static_assert(kLegacyBindingFallbacks.icon_left_double_click == MediaControlAction::None);
+static_assert(kLegacyBindingFallbacks.title_left_click == MediaControlAction::OpenMediaCard);
+static_assert(kLegacyBindingFallbacks.title_left_double_click == MediaControlAction::SkipNext);
 
 constexpr media::SettingData kRepeatedBindings{
     true,
@@ -30,12 +41,15 @@ constexpr media::SettingData kRepeatedBindings{
     5,
     {
         MediaControlAction::TogglePlayPause,
-        MediaControlAction::TogglePlayPause,
+        MediaControlAction::SkipPrevious,
+        MediaControlAction::SkipNext,
+        MediaControlAction::OpenMediaCard,
         MediaControlAction::TogglePlayPause,
         WheelAction::SwitchTrack,
     },
 };
-static_assert(kRepeatedBindings.input.left_click == kRepeatedBindings.input.right_click);
+static_assert(kRepeatedBindings.input.icon_left_click == MediaControlAction::TogglePlayPause);
+static_assert(kRepeatedBindings.input.title_left_double_click == MediaControlAction::OpenMediaCard);
 static_assert(kRepeatedBindings.input.wheel == WheelAction::SwitchTrack);
 
 static_assert(media::ClampTitleWidth(20) == media::kMinimumTitleWidth);
@@ -98,6 +112,8 @@ constexpr media::SettingData kNormalized = media::NormalizeSettings({
     {
         static_cast<MediaControlAction>(99),
         MediaControlAction::TogglePlayPause,
+        MediaControlAction::SkipPrevious,
+        static_cast<MediaControlAction>(99),
         MediaControlAction::None,
         static_cast<WheelAction>(99),
     },
@@ -108,7 +124,9 @@ static_assert(!kNormalized.smooth_cover_scaling);
 static_assert(kNormalized.min_title_width == media::kMinimumTitleWidth);
 static_assert(kNormalized.max_title_width == media::kMaximumTitleWidth);
 static_assert(kNormalized.system_volume_step_percent == media::kMaximumSystemVolumeStepPercent);
-static_assert(kNormalized.input.left_click == kDefaultSettings.input.left_click);
-static_assert(kNormalized.input.left_double_click == MediaControlAction::TogglePlayPause);
+static_assert(kNormalized.input.icon_left_click == kDefaultSettings.input.icon_left_click);
+static_assert(kNormalized.input.icon_left_double_click == MediaControlAction::TogglePlayPause);
+static_assert(kNormalized.input.title_left_click == MediaControlAction::SkipPrevious);
+static_assert(kNormalized.input.title_left_double_click == kDefaultSettings.input.title_left_double_click);
 static_assert(kNormalized.input.wheel == kDefaultSettings.input.wheel);
 static_assert(kNormalized != kDefaultSettings);

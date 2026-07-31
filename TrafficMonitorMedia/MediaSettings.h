@@ -31,13 +31,25 @@ namespace media
 
     struct InputBindings
     {
-        MediaControlAction left_click{ MediaControlAction::OpenMediaCard };
-        MediaControlAction left_double_click{ MediaControlAction::TogglePlayPause };
+        MediaControlAction icon_left_click{ MediaControlAction::TogglePlayPause };
+        MediaControlAction icon_left_double_click{ MediaControlAction::None };
+        MediaControlAction title_left_click{ MediaControlAction::OpenMediaCard };
+        MediaControlAction title_left_double_click{ MediaControlAction::None };
         MediaControlAction right_click{ MediaControlAction::None };
         WheelAction wheel{ WheelAction::SwitchMediaSession };
 
         constexpr bool operator==(const InputBindings&) const = default;
     };
+
+    [[nodiscard]] constexpr InputBindings BuildInputBindingFallbacks(
+        InputBindings defaults,
+        MediaControlAction legacy_left_click,
+        MediaControlAction legacy_left_double_click) noexcept
+    {
+        defaults.title_left_click = legacy_left_click;
+        defaults.title_left_double_click = legacy_left_double_click;
+        return defaults;
+    }
 
     struct SettingData
     {
@@ -134,10 +146,18 @@ namespace media
         }
         settings.system_volume_step_percent = ClampSystemVolumeStepPercent(
             settings.system_volume_step_percent);
-        settings.input.left_click = NormalizeAction(settings.input.left_click, defaults.input.left_click);
-        settings.input.left_double_click = NormalizeAction(
-            settings.input.left_double_click,
-            defaults.input.left_double_click);
+        settings.input.icon_left_click = NormalizeAction(
+            settings.input.icon_left_click,
+            defaults.input.icon_left_click);
+        settings.input.icon_left_double_click = NormalizeAction(
+            settings.input.icon_left_double_click,
+            defaults.input.icon_left_double_click);
+        settings.input.title_left_click = NormalizeAction(
+            settings.input.title_left_click,
+            defaults.input.title_left_click);
+        settings.input.title_left_double_click = NormalizeAction(
+            settings.input.title_left_double_click,
+            defaults.input.title_left_double_click);
         settings.input.right_click = NormalizeAction(settings.input.right_click, defaults.input.right_click);
         settings.input.wheel = NormalizeWheelAction(settings.input.wheel, defaults.input.wheel);
         return settings;

@@ -26,6 +26,7 @@ public:
     virtual OptionReturn ShowOptionsDialog(void* hParent) override;
     virtual const wchar_t* GetInfo(PluginInfoIndex index) override;
     virtual void OnInitialize(ITrafficMonitor* pApp) override;
+    virtual void OnExtenedInfo(ExtendedInfoIndex index, const wchar_t* data) override;
     virtual void* GetPluginIcon() override;
 
     const CString& StringRes(UINT id);
@@ -35,16 +36,22 @@ public:
     [[nodiscard]] MediaTitleSnapshot GetMediaSnapshot() const;
     void RequestSwitchSession(media::SessionSwitchDirection direction);
     void RequestImmediateAction(media::MediaControlAction action);
-    void RequestSingleClick(media::MediaControlAction action);
-    void RequestDoubleClick(media::MediaControlAction action);
+    void RequestSingleClick(
+        media::MediaControlAction action,
+        media::MediaItemHitRegion hit_region,
+        unsigned int confirmation_delay_milliseconds);
+    void RequestDoubleClick(
+        media::MediaControlAction action,
+        media::MediaItemHitRegion hit_region);
     void RequestAdjustSystemVolume(float delta);
     void ScheduleOpenMediaCard(
         HWND anchor_window,
         int client_x,
         int client_y,
-        unsigned int confirmation_delay_milliseconds);
+        unsigned int confirmation_delay_milliseconds,
+        media::MediaItemHitRegion hit_region);
     void OpenMediaCard(HWND anchor_window, int client_x, int client_y);
-    void SuppressScheduledMediaCardOpenAfterDoubleClick();
+    void SuppressScheduledMediaCardOpenAfterDoubleClick(media::MediaItemHitRegion hit_region);
     void CloseMediaCard();
     void SetMediaCardVisible(bool visible);
     void RequestSeekToPosition(media::SessionIdentity session_identity, std::int64_t position_ticks);

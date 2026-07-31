@@ -35,8 +35,10 @@ void COptionsDlg::DoDataExchange(CDataExchange* pDX)
     DDX_Control(pDX, IDC_MIN_TITLE_WIDTH_SPIN, m_min_title_width_spin);
     DDX_Control(pDX, IDC_MAX_TITLE_WIDTH_SPIN, m_max_title_width_spin);
     DDX_Control(pDX, IDC_SYSTEM_VOLUME_STEP_SPIN, m_system_volume_step_spin);
-    DDX_Control(pDX, IDC_LEFT_CLICK_ACTION_COMBO, m_left_click_combo);
-    DDX_Control(pDX, IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO, m_left_double_click_combo);
+    DDX_Control(pDX, IDC_ICON_LEFT_CLICK_ACTION_COMBO, m_icon_left_click_combo);
+    DDX_Control(pDX, IDC_ICON_LEFT_DOUBLE_CLICK_ACTION_COMBO, m_icon_left_double_click_combo);
+    DDX_Control(pDX, IDC_TITLE_LEFT_CLICK_ACTION_COMBO, m_title_left_click_combo);
+    DDX_Control(pDX, IDC_TITLE_LEFT_DOUBLE_CLICK_ACTION_COMBO, m_title_left_double_click_combo);
     DDX_Control(pDX, IDC_RIGHT_CLICK_ACTION_COMBO, m_right_click_combo);
     DDX_Control(pDX, IDC_WHEEL_ACTION_COMBO, m_wheel_action_combo);
 }
@@ -72,13 +74,17 @@ BOOL COptionsDlg::OnInitDialog()
         media::kMaximumSystemVolumeStepPercent);
     m_system_volume_step_spin.SetBuddy(GetDlgItem(IDC_SYSTEM_VOLUME_STEP_EDIT));
 
-    FillActionCombo(m_left_click_combo);
-    FillActionCombo(m_left_double_click_combo);
+    FillActionCombo(m_icon_left_click_combo);
+    FillActionCombo(m_icon_left_double_click_combo);
+    FillActionCombo(m_title_left_click_combo);
+    FillActionCombo(m_title_left_double_click_combo);
     FillActionCombo(m_right_click_combo);
     FillWheelActionCombo(m_wheel_action_combo);
 
-    SelectAction(m_left_click_combo, m_data.input.left_click);
-    SelectAction(m_left_double_click_combo, m_data.input.left_double_click);
+    SelectAction(m_icon_left_click_combo, m_data.input.icon_left_click);
+    SelectAction(m_icon_left_double_click_combo, m_data.input.icon_left_double_click);
+    SelectAction(m_title_left_click_combo, m_data.input.title_left_click);
+    SelectAction(m_title_left_double_click_combo, m_data.input.title_left_double_click);
     SelectAction(m_right_click_combo, m_data.input.right_click);
     SelectWheelAction(m_wheel_action_combo, m_data.input.wheel);
 
@@ -118,10 +124,18 @@ void COptionsDlg::OnOK()
     updated.min_title_width = m_min_title_width;
     updated.max_title_width = m_max_title_width;
     updated.system_volume_step_percent = m_system_volume_step_percent;
-    updated.input.left_click = ReadAction(m_left_click_combo, updated.input.left_click);
-    updated.input.left_double_click = ReadAction(
-        m_left_double_click_combo,
-        updated.input.left_double_click);
+    updated.input.icon_left_click = ReadAction(
+        m_icon_left_click_combo,
+        updated.input.icon_left_click);
+    updated.input.icon_left_double_click = ReadAction(
+        m_icon_left_double_click_combo,
+        updated.input.icon_left_double_click);
+    updated.input.title_left_click = ReadAction(
+        m_title_left_click_combo,
+        updated.input.title_left_click);
+    updated.input.title_left_double_click = ReadAction(
+        m_title_left_double_click_combo,
+        updated.input.title_left_double_click);
     updated.input.right_click = ReadAction(m_right_click_combo, updated.input.right_click);
     updated.input.wheel = ReadWheelAction(m_wheel_action_combo, updated.input.wheel);
     m_data = media::NormalizeSettings(updated);
@@ -293,18 +307,25 @@ void COptionsDlg::CaptureInitialLayout()
     capture(IDC_TITLE_WIDTH_UNIT_STATIC, media::HorizontalAnchor::Right);
 
     capture(IDC_MOUSE_ACTIONS_GROUP, media::HorizontalAnchor::Stretch);
-    capture(IDC_LEFT_CLICK_LABEL_STATIC, media::HorizontalAnchor::Left);
-    capture(IDC_LEFT_CLICK_ACTION_COMBO, media::HorizontalAnchor::Left);
-    capture(IDC_LEFT_DOUBLE_CLICK_LABEL_STATIC, media::HorizontalAnchor::Left);
-    capture(IDC_LEFT_DOUBLE_CLICK_ACTION_COMBO, media::HorizontalAnchor::Left);
-    capture(IDC_RIGHT_CLICK_LABEL_STATIC, media::HorizontalAnchor::Right);
-    capture(IDC_RIGHT_CLICK_ACTION_COMBO, media::HorizontalAnchor::Right);
+    capture(IDC_ICON_COLUMN_LABEL_STATIC, media::HorizontalAnchor::Left);
+    capture(IDC_ICON_LEFT_CLICK_LABEL_STATIC, media::HorizontalAnchor::Left);
+    capture(IDC_ICON_LEFT_CLICK_ACTION_COMBO, media::HorizontalAnchor::Left);
+    capture(IDC_ICON_LEFT_DOUBLE_CLICK_LABEL_STATIC, media::HorizontalAnchor::Left);
+    capture(IDC_ICON_LEFT_DOUBLE_CLICK_ACTION_COMBO, media::HorizontalAnchor::Left);
+    capture(IDC_TITLE_COLUMN_LABEL_STATIC, media::HorizontalAnchor::Right);
+    capture(IDC_TITLE_LEFT_CLICK_LABEL_STATIC, media::HorizontalAnchor::Right);
+    capture(IDC_TITLE_LEFT_CLICK_ACTION_COMBO, media::HorizontalAnchor::Right);
+    capture(IDC_TITLE_LEFT_DOUBLE_CLICK_LABEL_STATIC, media::HorizontalAnchor::Right);
+    capture(IDC_TITLE_LEFT_DOUBLE_CLICK_ACTION_COMBO, media::HorizontalAnchor::Right);
+    capture(IDC_RIGHT_CLICK_LABEL_STATIC, media::HorizontalAnchor::Left);
+    capture(IDC_RIGHT_CLICK_ACTION_COMBO, media::HorizontalAnchor::Left);
     capture(IDC_WHEEL_LABEL_STATIC, media::HorizontalAnchor::Right);
     capture(IDC_WHEEL_ACTION_COMBO, media::HorizontalAnchor::Right);
-    capture(IDC_SYSTEM_VOLUME_LABEL_STATIC, media::HorizontalAnchor::Right);
-    capture(IDC_SYSTEM_VOLUME_STEP_EDIT, media::HorizontalAnchor::Right);
-    capture(IDC_SYSTEM_VOLUME_STEP_SPIN, media::HorizontalAnchor::Right);
-    capture(IDC_SYSTEM_VOLUME_UNIT_STATIC, media::HorizontalAnchor::Right);
+    capture(IDC_SYSTEM_VOLUME_LABEL_STATIC, media::HorizontalAnchor::Left);
+    capture(IDC_SYSTEM_VOLUME_STEP_EDIT, media::HorizontalAnchor::Left);
+    capture(IDC_SYSTEM_VOLUME_STEP_SPIN, media::HorizontalAnchor::Left);
+    capture(IDC_SYSTEM_VOLUME_UNIT_STATIC, media::HorizontalAnchor::Left);
+    capture(IDC_LEFT_CLICK_DELAY_HINT_STATIC, media::HorizontalAnchor::Stretch);
     capture(IDC_RIGHT_CLICK_HINT_STATIC, media::HorizontalAnchor::Stretch);
 
     capture(IDOK, media::HorizontalAnchor::Right, true);

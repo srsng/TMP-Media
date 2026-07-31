@@ -49,12 +49,14 @@ void CMediaCardWindowManager::ScheduleOpen(
     HWND anchor_window,
     int client_x,
     int client_y,
-    unsigned int confirmation_delay_milliseconds)
+    unsigned int confirmation_delay_milliseconds,
+    media::MediaItemHitRegion hit_region)
 {
-    CancelScheduledOpen();
+    CancelScheduledOpen(hit_region);
+    const std::size_t hit_region_index = media::MediaItemHitRegionIndex(hit_region);
     if (!media::ShouldScheduleMediaCardOpen(
             GetTickCount64(),
-            m_open_suppression_deadline_milliseconds))
+            m_open_suppression_deadline_milliseconds[hit_region_index]))
     {
         return;
     }
@@ -65,39 +67,57 @@ void CMediaCardWindowManager::ScheduleOpen(
         return;
     }
 
-    m_pending_anchor = anchor_window;
-    m_pending_client_point = CPoint(client_x, client_y);
+    PendingOpen& pending_open = m_pending_opens[hit_region_index];
+    pending_open.anchor = anchor_window;
+    pending_open.client_point = CPoint(client_x, client_y);
     s_scheduled_manager = this;
-    m_open_timer = SetTimer(
+    pending_open.timer = SetTimer(
         nullptr,
         0,
         confirmation_delay_milliseconds,
         &CMediaCardWindowManager::OpenTimerProc);
-    if (m_open_timer == 0)
+    if (pending_open.timer == 0)
     {
-        s_scheduled_manager = nullptr;
+        pending_open.anchor = nullptr;
+        if (!HasScheduledOpen())
+        {
+            s_scheduled_manager = nullptr;
+        }
         Open(anchor_window, client_x, client_y);
     }
 }
 
 void CMediaCardWindowManager::CancelScheduledOpen()
 {
-    if (m_open_timer != 0)
+    CancelScheduledOpen(media::MediaItemHitRegion::Icon);
+    CancelScheduledOpen(media::MediaItemHitRegion::Title);
+}
+
+void CMediaCardWindowManager::CancelScheduledOpen(media::MediaItemHitRegion hit_region)
+{
+    PendingOpen& pending_open = m_pending_opens[media::MediaItemHitRegionIndex(hit_region)];
+    if (pending_open.timer != 0)
     {
-        KillTimer(nullptr, m_open_timer);
-        m_open_timer = 0;
+        KillTimer(nullptr, pending_open.timer);
+        pending_open.timer = 0;
     }
-    if (s_scheduled_manager == this)
+    pending_open.anchor = nullptr;
+    if (s_scheduled_manager == this && !HasScheduledOpen())
     {
         s_scheduled_manager = nullptr;
     }
-    m_pending_anchor = nullptr;
 }
 
-void CMediaCardWindowManager::SuppressScheduledOpenAfterDoubleClick()
+bool CMediaCardWindowManager::HasScheduledOpen() const noexcept
 {
-    CancelScheduledOpen();
-    m_open_suppression_deadline_milliseconds =
+    return m_pending_opens[0].timer != 0 || m_pending_opens[1].timer != 0;
+}
+
+void CMediaCardWindowManager::SuppressScheduledOpenAfterDoubleClick(
+    media::MediaItemHitRegion hit_region)
+{
+    CancelScheduledOpen(hit_region);
+    m_open_suppression_deadline_milliseconds[media::MediaItemHitRegionIndex(hit_region)] =
         media::CalculateMediaCardOpenSuppressionDeadline(GetTickCount64(), GetDoubleClickTime());
 }
 
@@ -450,16 +470,36 @@ bool CMediaCardWindowManager::HasCardWindow() const noexcept
 void CALLBACK CMediaCardWindowManager::OpenTimerProc(HWND, UINT, UINT_PTR timer_id, DWORD)
 {
     CMediaCardWindowManager* manager = s_scheduled_manager;
-    if (manager == nullptr || manager->m_open_timer != timer_id)
+    if (manager == nullptr)
     {
         KillTimer(nullptr, timer_id);
         return;
     }
 
-    const HWND anchor = manager->m_pending_anchor;
-    const CPoint point = manager->m_pending_client_point;
-    manager->CancelScheduledOpen();
-    manager->Open(anchor, point.x, point.y);
+    std::size_t pending_index = manager->m_pending_opens.size();
+    for (std::size_t index = 0; index < manager->m_pending_opens.size(); ++index)
+    {
+        if (manager->m_pending_opens[index].timer == timer_id)
+        {
+            pending_index = index;
+            break;
+        }
+    }
+    if (pending_index == manager->m_pending_opens.size())
+    {
+        KillTimer(nullptr, timer_id);
+        return;
+    }
+
+    const PendingOpen pending_open = manager->m_pending_opens[pending_index];
+    const media::MediaItemHitRegion hit_region = pending_index == 0
+        ? media::MediaItemHitRegion::Icon
+        : media::MediaItemHitRegion::Title;
+    manager->CancelScheduledOpen(hit_region);
+    manager->Open(
+        pending_open.anchor,
+        pending_open.client_point.x,
+        pending_open.client_point.y);
 }
 
 void CALLBACK CMediaCardWindowManager::AnimationTimerProc(HWND, UINT, UINT_PTR timer_id, DWORD)

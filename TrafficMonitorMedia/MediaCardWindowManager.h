@@ -1,5 +1,8 @@
 #pragma once
 
+#include "MediaItemInput.h"
+
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -18,9 +21,10 @@ public:
         HWND anchor_window,
         int client_x,
         int client_y,
-        unsigned int confirmation_delay_milliseconds);
+        unsigned int confirmation_delay_milliseconds,
+        media::MediaItemHitRegion hit_region);
     void CancelScheduledOpen();
-    void SuppressScheduledOpenAfterDoubleClick();
+    void SuppressScheduledOpenAfterDoubleClick(media::MediaItemHitRegion hit_region);
     void Open(HWND anchor_window, int client_x, int client_y);
     void Close();
     void ForceClose();
@@ -31,6 +35,13 @@ public:
     [[nodiscard]] bool IsOpen() const noexcept;
 
 private:
+    struct PendingOpen
+    {
+        HWND anchor{};
+        CPoint client_point{};
+        UINT_PTR timer{};
+    };
+
     enum class WindowState
     {
         Closed,
@@ -52,6 +63,8 @@ private:
 
     static void CALLBACK OpenTimerProc(HWND window, UINT message, UINT_PTR timer_id, DWORD time);
     static void CALLBACK AnimationTimerProc(HWND window, UINT message, UINT_PTR timer_id, DWORD time);
+    void CancelScheduledOpen(media::MediaItemHitRegion hit_region);
+    [[nodiscard]] bool HasScheduledOpen() const noexcept;
     void OpenAtScreenPoint(HWND anchor_window, CPoint anchor_point);
     void StartAnimation(AnimationKind kind, const CRect& base_rect);
     void AdvanceAnimation();
@@ -62,10 +75,8 @@ private:
     [[nodiscard]] bool HasCardWindow() const noexcept;
 
     std::unique_ptr<CMediaCardWnd> m_card;
-    HWND m_pending_anchor{};
-    CPoint m_pending_client_point{};
-    UINT_PTR m_open_timer{};
-    std::uint64_t m_open_suppression_deadline_milliseconds{};
+    std::array<PendingOpen, 2> m_pending_opens;
+    std::array<std::uint64_t, 2> m_open_suppression_deadline_milliseconds{};
     WindowState m_state{ WindowState::Closed };
     AnimationKind m_animation_kind{ AnimationKind::None };
     UINT_PTR m_animation_timer{};
